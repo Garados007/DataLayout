@@ -1,0 +1,341 @@
+<?xml version="1.0" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
+    elementFormDefault="qualified"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
+   >
+<!-- targetNamespace="http://doc.mabron.de/xsd/data-layout/2019/01/data-layout.xsd"-->
+    
+    <xs:element name="DataDefinition">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Environment" type="Environment" minOccurs="0" maxOccurs="1" />
+                <xs:element name="Types" type="Types" minOccurs="0" maxOccurs="1">
+                    <xs:unique name="typeName">
+                        <xs:selector xpath="Type" />
+                        <xs:field xpath="@name" />
+                    </xs:unique>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Environment">
+        <xs:sequence>
+            <xs:element name="EnvVars" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Attribute" type="Attribute" minOccurs="0" maxOccurs="unbounded" />
+                    </xs:sequence>
+                </xs:complexType>
+                <xs:unique name="envVarName">
+                    <xs:selector xpath="Attribute" />
+                    <xs:field xpath="@name" />
+                </xs:unique>
+            </xs:element>
+            <xs:element name="Build" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="CSharp" minOccurs="0" maxOccurs="1">
+                            <xs:complexType>
+                                <xs:attribute name="supported" type="xs:boolean" default="true" />
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="PHP" minOccurs="0" maxOccurs="1">
+                            <xs:complexType>
+                                <xs:attribute name="supported" type="xs:boolean" default="true" />
+                                <xs:attribute name="dbEngine" default="sql-mabron-db-connector">
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:enumeration value="sql-mabron-db-connector" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="dbPrefix" default="">
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="[a-zA-Z0-9_]*" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="classNamespace" default="">
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\\[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="publicMemberAccess" type="xs:boolean" default="false" />
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                    <xs:attribute name="profile" use="optional" type="keyType" default="default" />
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Types">
+        <xs:sequence>
+            <xs:element name="Type" minOccurs="0" maxOccurs="unbounded" type="typeDef">
+                <xs:key name="attrKey">
+                    <xs:selector xpath="./Attributes/Attribute" />
+                    <xs:field xpath="@name" />
+                </xs:key>
+                <xs:keyref name="attrKeyRef" refer="attrKey">
+                    <xs:selector xpath="./Links/Link" />
+                    <xs:field xpath="@attribute" />
+                </xs:keyref>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="typeDef">
+        <xs:sequence>
+            <xs:element name="Attributes" minOccurs="1" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Attribute" type="Attribute" minOccurs="0" maxOccurs="unbounded" />
+                    </xs:sequence>
+                </xs:complexType>
+                <xs:unique name="typeAttrName">
+                    <xs:selector xpath="Attribute"></xs:selector>
+                    <xs:field xpath="@name" />
+                </xs:unique>
+            </xs:element>
+            <xs:element name="Links" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Link" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:attribute name="attribute" type="keyType" use="required" />
+                                <xs:attribute name="target" type="keyType" use="required" />
+                                <xs:attribute name="tarAttribute" type="keyType" use="required" />
+                                <xs:attribute name="name" type="keyType" use="optional" />
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="Joints" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Joint" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:attribute name="name" type="keyType" use="required" />
+                                <xs:attribute name="target" type="keyType" use="required" />
+                                <xs:attribute name="required" type="xs:boolean" use="optional" default="true" />
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="Access" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Query" type="Query" minOccurs="0" maxOccurs="unbounded" />
+                    </xs:sequence>
+                </xs:complexType>
+                <xs:unique name="typeAccessName">
+                    <xs:selector xpath="Query" />
+                    <xs:field xpath="@name" />
+                </xs:unique>
+            </xs:element>
+        </xs:sequence>
+        <xs:attribute name="name" type="keyType" use="required" />
+        <xs:attribute name="base" type="keyType" use="optional" />
+    </xs:complexType>
+
+    <xs:complexType name="Query">
+        <xs:sequence>
+            <xs:element name="Inputs" minOccurs="1" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence maxOccurs="unbounded">
+                        <xs:element name="InputVar" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:attribute name="name" type="keyType" use="required" />
+                                <xs:attribute name="type" type="AttributeType" use="required" />
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="InputObj" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:attribute name="name" type="keyType" use="required" />
+                                <xs:attribute name="target" type="keyType" use="required" />
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+                <xs:unique name="queryInputs">
+                    <xs:selector xpath="InputVar" />
+                    <xs:field xpath="@name" />
+                </xs:unique>
+            </xs:element>
+            
+            <xs:element name="Bounds" minOccurs="1" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="boundBoolContent" minOccurs="1" maxOccurs="1" />
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+        <xs:attribute name="name" type="keyType" use="required" />
+        <xs:attribute name="use" use="optional">
+            <xs:annotation>
+                <xs:documentation>
+                    The purpose you want to use this query
+                </xs:documentation>
+            </xs:annotation>
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="search">
+                        <xs:annotation>
+                            <xs:documentation>
+                                This Query will generate a result and contains a list of all found entries.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="delete">
+                        <xs:annotation>
+                            <xs:documentation>
+                                This Query will search for all matching entries and will delete them.
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:enumeration>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:attribute>
+    </xs:complexType>
+
+    <xs:group name="boundValueContent">
+        <xs:sequence>
+            <xs:choice>
+                <xs:element name="Input">
+                    <xs:annotation>
+                        <xs:documentation xml:lang="en">
+                            The value of a specified search variable
+                        </xs:documentation>
+                    </xs:annotation>
+                    <xs:complexType>
+                        <xs:attribute name="name" type="keyType" use="required"/>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Object">
+                    <xs:annotation>
+                        <xs:documentation xml:lang="en">
+                            The value of a specified search object
+                        </xs:documentation>
+                    </xs:annotation>
+                    <xs:complexType>
+                        <xs:attribute name="name" type="keyType" use="required"/>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Target">
+                    <xs:complexType>
+                        <xs:attribute name="name" type="keyType" use="required" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Env">
+                    <xs:complexType>
+                        <xs:attribute name="name" type="keyType" use="required" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Joint">
+                    <xs:complexType>
+                        <xs:attribute name="name" type="keyType" use="required" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Value">
+                    <xs:complexType>
+                        <xs:attribute name="type" type="AttributeType" use="required" />
+                        <xs:attribute name="value" type="xs:string" use="required" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:group ref="boundBoolContent" />
+            </xs:choice>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="boundBoolContent">
+        <xs:sequence>
+            <xs:choice>
+                <xs:element name="True" />
+                <xs:element name="False" />
+                <xs:element name="Not">
+                    <xs:complexType>
+                        <xs:group ref="boundBoolContent" minOccurs="1" maxOccurs="1" />
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Compare">
+                    <xs:complexType>
+                        <xs:group ref="boundValueContent" minOccurs="2" maxOccurs="2" />
+                        <xs:attribute name="type" use="required">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="=" />
+                                    <xs:enumeration value="lt" />
+                                    <xs:enumeration value="gt" />
+                                    <xs:enumeration value="leq" />
+                                    <xs:enumeration value="geq" />
+                                    <xs:enumeration value="!=" />
+                                    <xs:enumeration value="eq" />
+                                    <xs:enumeration value="neq" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Bool">
+                    <xs:complexType>
+                        <xs:group ref="boundBoolContent" minOccurs="2" maxOccurs="2" />
+                        <xs:attribute name="type" use="required">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="and" />
+                                    <xs:enumeration value="or" />
+                                    <xs:enumeration value="xor" />
+                                    <xs:enumeration value="nand" />
+                                    <xs:enumeration value="nor" />
+                                    <xs:enumeration value="xnor" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+            </xs:choice>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:complexType name="Attribute">
+        <xs:attribute name="name" type="keyType" use="required" />
+        <xs:attribute name="type" type="AttributeType" use="required" />
+        <xs:attribute name="default" type="xs:string" use="optional" />
+        <xs:attribute name="unique" type="xs:boolean" use="optional" />
+        <xs:attribute name="optional" type="xs:boolean" use="optional" />
+    </xs:complexType>
+
+    <xs:simpleType name="AttributeType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="bool" />
+            <xs:enumeration value="byte" />
+            <xs:enumeration value="short" />
+            <xs:enumeration value="int" />
+            <xs:enumeration value="long" />
+            <xs:enumeration value="sbyte" />
+            <xs:enumeration value="ushort" />
+            <xs:enumeration value="uint" />
+            <xs:enumeration value="ulong" />
+            <xs:enumeration value="float" />
+            <xs:enumeration value="double" />
+            <xs:enumeration value="string" />
+            <xs:enumeration value="bytes" />
+            <xs:enumeration value="date" />
+            <xs:enumeration value="json" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="keyType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[a-zA-Z][0-9a-zA-Z_]*" />
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>
