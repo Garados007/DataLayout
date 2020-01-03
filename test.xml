@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd
+        file:///E:/Dokumente/GitLab/DataLayout/data-layout.xsd">
+    <Environment>
+        <EnvVars>
+            <Attribute name="userId" type="uint" />
+        </EnvVars>
+        <Build profile="default">
+            <CSharp supported="false" />
+            <PHP dbEngine="sql-mabron-db-connector" 
+                dbPrefix="test_"
+                classNamespace="Test\TestEnvironment"
+                publicMemberAccess="true"
+            />
+        </Build>
+    </Environment>
+    <Types>
+        <Type name="ObjectA">
+            <Attributes>
+                <Attribute name="par1" type="uint" default="0" unique="true" />
+                <Attribute name="par2" type="uint" default="0" unique="true" />
+                <Attribute name="par3" type="string" default="a" optional="true" />
+                <Attribute name="json" type="json" default="[]"/>
+                <Attribute name="created" type="date" default="now" />
+            </Attributes>
+            <Links>
+                <!-- <Link attribute="par2" target="ObjectA" tarAttribute="par1" name="allPar1" /> -->
+            </Links>
+            <Joints>
+                <Joint name="parent" target="ObjectA" required="false" />
+            </Joints>
+            <Access>
+                <Query name="fetchIdentity">
+                    <Inputs>
+                        <InputVar name="par" type="uint" />
+                    </Inputs>
+                    <Bounds>
+                        <Bool type="and">
+                            <Compare type="=">
+                                <Input name="par" />
+                                <Target name="par1" />
+                            </Compare>
+                            <Compare type="=">
+                                <Target name="par1" />
+                                <Target name="par2" />
+                            </Compare>
+                        </Bool>
+                    </Bounds>
+                </Query>
+                <Query name="deleteByPar2" use="delete">
+                    <Inputs>
+                        <InputVar name="par" type="uint" />
+                    </Inputs>
+                    <Bounds>
+                        <Compare type="=">
+                            <Input name="par" />
+                            <Target name="par2" />
+                        </Compare>
+                    </Bounds>
+                </Query>
+                <Query name="fetchChilds" use="search">
+                    <Inputs>
+                        <InputObj name="node" target="ObjectA" />
+                    </Inputs>
+                    <Bounds>
+                        <Compare type="=">
+                            <Object name="node" />
+                            <Joint name="parent" />
+                        </Compare>
+                    </Bounds>
+                </Query>
+            </Access>
+        </Type>
+        <Type name="ObjectB" base="ObjectA">
+            <Attributes>
+                <Attribute name="ext" type="bool" />
+            </Attributes>
+            <Joints>
+                <Joint name="leaf" target="ObjectA" required="false" />
+            </Joints>
+            <Access>
+                <Query name="fetchExt" use="search">
+                    <Inputs />
+                    <Bounds>
+                        <Compare type="=">
+                            <Target name="ext" />
+                            <True />
+                        </Compare>
+                    </Bounds>
+                </Query>
+                <Query name="deleteNotExt" use="delete">
+                    <Inputs />
+                    <Bounds>
+                        <Compare type="=">
+                            <Target name="ext" />
+                            <False />
+                        </Compare>
+                    </Bounds>
+                </Query>
+            </Access>
+        </Type>
+    </Types>
+</DataDefinition>
