@@ -144,6 +144,7 @@ This is a list of possible extensions that I plan to maybe implement:
 - optional cache query result
 - modify query
 - array input at querys to select a member out of an array
+- support data extensions with type prefixes
 
 ## community support
 
