@@ -2,7 +2,7 @@
 <DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd
-        file:///E:/Dokumente/GitLab/DataLayout/data-layout.xsd">
+        data-layout.xsd">
     <Environment>
         <EnvVars>
             <Attribute name="userId" type="uint" />
