@@ -141,6 +141,9 @@ This is a list of possible extensions that I plan to maybe implement:
     - different data storages
 - more configuration options
 - automated test cases (I have tested the current stuff by hand)
+- optional cache query result
+- modify query
+- array input at querys to select a member out of an array
 
 ## community support
 

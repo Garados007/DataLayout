@@ -4,8 +4,6 @@
     elementFormDefault="qualified"
     targetNamespace="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
    >
-<!-- targetNamespace="http://doc.mabron.de/xsd/data-layout/2019/01/data-layout.xsd"-->
-    
     <xs:element name="DataDefinition">
         <xs:complexType>
             <xs:sequence>
