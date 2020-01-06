@@ -1096,7 +1096,7 @@ class TypeBuilder {
                 return Token::multi(
                     Token::text('" . '),
                     self::getWrappedTypeForSql(
-                        $env->getEnvVar($bound->getName())->getType(),
+                        $bound->getType(),
                         self::getConversionOfVariable(
                             $bound->getType(),
                             $bound->getValue()
@@ -1307,7 +1307,7 @@ class TypeBuilder {
             case 'string':
             case 'bytes':
                 $entry = Token::multi(
-                    Token::text('\'\\\'\' . \\DB::encode('),
+                    Token::text('(\'\\\'\' . \\DB::encode('),
                     $entry,
                     Token::text(') . \'\\\'\')')
                 );
@@ -1317,7 +1317,7 @@ class TypeBuilder {
                 break;
             case 'json':
                 $entry = Token::multi(
-                    Token::text('\'\\\'\' . \\DB::encode('),
+                    Token::text('(\'\\\'\' . \\DB::encode('),
                     $entry,
                     Token::text(') . \'\\\'\')')
                 );
@@ -1357,7 +1357,7 @@ class TypeBuilder {
 
     private static function getConversionOfVariable(string $type, $value): Token {
         switch (true) {
-            case $type == 'date' && $value === null:
+            case $type == 'date' && ($value === null || $value == 'now'):
                 return Token::text('time()');
                 break;
             case $value === null:

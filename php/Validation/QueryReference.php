@@ -115,7 +115,7 @@ class QueryReference {
                     return 'Input: variable '.$bound->getName().' is an array (use "InSet" instead)';
             } break;
             case $bound instanceof \Data\ObjectBound: {
-                if (!array_key_exists($bound->getName(), $obj[]))
+                if (!array_key_exists($bound->getName(), $obj))
                     return 'Object: variable '.$bound->getName().' not found';
                 if ($obj[$bound->getName()])
                     return 'Object: variable '.$bound->getName().' is an array (use "InSet" instead)';

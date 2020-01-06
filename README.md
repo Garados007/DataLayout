@@ -145,8 +145,16 @@ This is a list of possible extensions that I plan to maybe implement:
 - automated test cases (I have tested the current stuff by hand)
 - modify query
 - automated querys created by unique attributes
-- sort of querys results
-- limit output of arrays (max result limit), limit can bound to input or env
+- add view members into the types:
+    - these members generate their value from the other members
+    - access like normal members in most ways
+    - cannot set value because its auto-computed
+    - this members are limited on the current entry scope (no linking, ...)
+    - this members are ideal for: sorting, comparing, computing
+- add math operator to bounds (+, -, *, /)
+- add is null bound
+- add constant bounds
+    - time now
 
 ## community support
 

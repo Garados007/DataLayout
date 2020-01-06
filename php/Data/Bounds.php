@@ -140,8 +140,8 @@ class ValueBound extends ValueOutputBound {
             return null;
         
         $value = new \Data\ValueBound();
-        $v = (string)$element->attributes()->value();
-        switch ((string)$element->attributes()->type()) {
+        $v = (string)$element->attributes()->value;
+        switch ((string)$element->attributes()->type) {
             case 'bool':
                 $value->type = 'bool';
                 $value->value = filter_var($v, FILTER_VALIDATE_BOOLEAN);
@@ -267,6 +267,7 @@ class CompareBound extends BooleanOutputBound {
             case 'lt': $comp->method = '<'; break;
             case 'gt': $comp->method = '>'; break;
             case 'leq': $comp->method = '<='; break;
+            case 'geq': $comp->method = '>='; break;
             case '!=': $comp->method = '<>'; break;
             case 'eq': $comp->method = '='; break;
             case 'neq': $comp->method = '<>'; break;
