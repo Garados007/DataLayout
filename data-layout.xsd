@@ -1,13 +1,25 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-01/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2019-01/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-01/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
             <xs:sequence>
                 <xs:element name="Environment" type="Environment" minOccurs="0" maxOccurs="1" />
+                <xs:element name="Extensions" minOccurs="0" maxOccurs="1">
+                    <xs:annotation>
+                        <xs:documentation>
+                            Add external files that will extend the current specification. 
+                            The external files can inherit from type definitions that are
+                            defined in the current file.
+                        </xs:documentation>
+                    </xs:annotation>
+                    <xs:complexType>
+                        <xs:group ref="Extensions" minOccurs="0" maxOccurs="unbounded" />
+                    </xs:complexType>
+                </xs:element>
                 <xs:element name="Types" type="Types" minOccurs="0" maxOccurs="1">
                     <xs:unique name="typeName">
                         <xs:selector xpath="Type" />
@@ -73,6 +85,63 @@
         </xs:sequence>
     </xs:complexType>
 
+    <xs:group name="Extensions">
+        <xs:sequence>
+            <xs:element name="Extension">
+                <xs:complexType>
+                    <xs:attribute name="file" type="xs:string" use="required" />
+                    <xs:attribute name="prefix" type="keyType" use="optional" />
+                    <xs:attribute name="use" use="optional" default="required">
+                        <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                                <xs:enumeration value="required" />
+                                <xs:enumeration value="optional" />
+                            </xs:restriction>
+                        </xs:simpleType>
+                    </xs:attribute>
+                    <xs:attribute name="environment" use="optional" default="ignore">
+                        <xs:annotation>
+                            <xs:documentation>
+                                Define how the environment variables should be handled.
+
+                                ignore: this will discard the environment variables
+                                from the extension. Any used variable has to be 
+                                defined in the current scope. 
+
+                                addPrefix: it will add a prefix to the environment
+                                variables. Any undefined environment variables in
+                                the extension has to be added in the current scope.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                                <xs:enumeration value="ignore">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The environment variables that are defined in 
+                                            the extension are discarded and ignored. It 
+                                            will use the variables from the current scope.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                </xs:enumeration>
+                                <xs:enumeration value="addPrefix">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The environment variables that are defined in
+                                            the extension get the same prefix as the types. 
+                                            If a undefined variable is used these have to be
+                                            defined in the current scope.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                </xs:enumeration>
+                            </xs:restriction>
+                        </xs:simpleType>
+                    </xs:attribute>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:group>
+
     <xs:complexType name="Types">
         <xs:sequence>
             <xs:element name="Type" minOccurs="0" maxOccurs="unbounded" type="typeDef">
@@ -90,7 +159,7 @@
 
     <xs:complexType name="typeDef">
         <xs:sequence>
-            <xs:element name="Attributes" minOccurs="1" maxOccurs="1">
+            <xs:element name="Attributes" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:sequence>
                         <xs:element name="Attribute" type="Attribute" minOccurs="0" maxOccurs="unbounded" />
@@ -153,12 +222,14 @@
                             <xs:complexType>
                                 <xs:attribute name="name" type="keyType" use="required" />
                                 <xs:attribute name="type" type="AttributeType" use="required" />
+                                <xs:attribute name="array" type="xs:boolean" use="optional" default="false" />
                             </xs:complexType>
                         </xs:element>
                         <xs:element name="InputObj" minOccurs="0" maxOccurs="unbounded">
                             <xs:complexType>
                                 <xs:attribute name="name" type="keyType" use="required" />
                                 <xs:attribute name="target" type="keyType" use="required" />
+                                <xs:attribute name="array" type="xs:boolean" use="optional" default="false" />
                             </xs:complexType>
                         </xs:element>
                     </xs:sequence>
@@ -201,6 +272,15 @@
                 </xs:restriction>
             </xs:simpleType>
         </xs:attribute>
+        <xs:attribute name="limit" use="optional" default="all">
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="all" />
+                    <xs:enumeration value="first" />
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:attribute>
+        <xs:attribute name="cache" type="xs:boolean" default="false" use="optional" />
     </xs:complexType>
 
     <xs:group name="boundValueContent">
@@ -296,6 +376,12 @@
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="InSet">
+                    <xs:complexType>
+                        <xs:group ref="boundValueContent" minOccurs="1" maxOccurs="1" />
+                        <xs:attribute name="list" use="required" type="keyType" />
                     </xs:complexType>
                 </xs:element>
             </xs:choice>

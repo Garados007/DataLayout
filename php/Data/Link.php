@@ -39,4 +39,8 @@ class Link {
 
         return $link;
     }
+
+    public function import(callable $renamer) {
+        $this->target = $renamer($this->target);
+    }
 }

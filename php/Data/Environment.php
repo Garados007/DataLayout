@@ -44,4 +44,11 @@ class Environment {
 
         return $env;
     }
+
+    public function import(array $vars, callable $renamer) {
+        foreach ($vars as $var) {
+            $var->import($renamer);
+            $this->envVars[] = $var;
+        }
+    }
 }

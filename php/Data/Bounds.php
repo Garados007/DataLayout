@@ -19,9 +19,14 @@ abstract class Bound {
             case 'Not': return \Data\NotBound::loadBoundFromXml($element);
             case 'Compare': return \Data\CompareBound::loadBoundFromXml($element);
             case 'Bool': return \Data\BoolBound::loadBoundFromXml($element);
+            case 'InSet': return \Data\InSetBound::loadBoundFromXml($element);
             //unknown
             default: return null;
         }
+    }
+
+    public function import(callable $env) {
+
     }
 }
 
@@ -94,6 +99,10 @@ class EnvBound extends ValueOutputBound {
         $env = new \Data\EnvBound();
         $env->name = (string)$element->attributes()->name;
         return $env;
+    }
+    
+    public function import(callable $env) {
+        $this->name = $env($this->name);
     }
 }
 
@@ -218,6 +227,10 @@ class NotBound extends BooleanOutputBound {
 
         return $not;
     }
+
+    public function import(callable $env) {
+        $this->child->import($env);
+    }
 }
 
 class CompareBound extends BooleanOutputBound {
@@ -259,6 +272,11 @@ class CompareBound extends BooleanOutputBound {
             return null;
         return $comp;
     }
+    
+    public function import(callable $env) {
+        $this->left->import($env);
+        $this->right->import($env);
+    }
 }
 
 class BoolBound extends BooleanOutputBound {
@@ -291,5 +309,41 @@ class BoolBound extends BooleanOutputBound {
         if ($bool->left === null || $bool->right === null)
             return null;
         return $bool;
+    }
+
+    public function import(callable $env) {
+        $this->left->import($env);
+        $this->right->import($env);
+    }
+}
+
+class InSetBound extends BooleanOutputBound {
+    private $list;
+    private $content;
+
+    public function getList(): string {
+        return $this->list;
+    }
+
+    public function getContent(): Bound {
+        return $this->content;
+    }
+
+    public static function loadBoundFromXml(\SimpleXMLElement $element): ?InSetBound {
+        if ($element->getName() != 'InSet')
+            return null;
+
+        $inset = new \Data\InSetBound();
+        $children = $element->children();
+        $inset->content = \Data\Bound::loadFromXml($children[0]);
+        $inset->list = (string)$element->attributes()->list;
+
+        if ($inset->content === null)
+            return null;
+        return $inset;
+    }
+
+    public function import(callable $env) {
+        $this->content->import($env);
     }
 }

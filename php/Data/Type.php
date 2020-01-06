@@ -15,6 +15,7 @@ class Type {
     private $access;
     private $name;
     private $base;
+    private $extension = null;
     
     private function __construct() {}
 
@@ -56,6 +57,14 @@ class Type {
         return $this->base;
     }
 
+    public function getExtension(): ?string {
+        return $this->extension;
+    }
+
+    public function setExtension(?string $extension) {
+        $this->extension = $extension;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?\Data\Type {
         if ($element->getName() != "Type")
             return null;
@@ -63,11 +72,12 @@ class Type {
         $type = new Type();
 
         $type->attributes = array();
-        foreach ($element->Attributes->children() as $child) {
-            $attr = \Data\Attribute::loadFromXml($child);
-            if ($attr !== null)
-                $type->attributes []= $attr;
-        }
+        if (isset($element->Attributes))
+            foreach ($element->Attributes->children() as $child) {
+                $attr = \Data\Attribute::loadFromXml($child);
+                if ($attr !== null)
+                    $type->attributes []= $attr;
+            }
 
         $type->links = array();
         if (isset($element->Links))
@@ -104,7 +114,7 @@ class Type {
     public function buildSqlCreateTable(\Data\Build $build): Token {
         return Token::multi(
             Token::text('CREATE TABLE IF NOT EXISTS `'),
-            Token::text($build->getDbPrefix() . $this->name),
+            Token::text($build->getDbPrefix() . $this->getName()),
             Token::textnlpush('` ('),
             Token::text('id BIGINT UNSIGNED NOT NULL '),
             $this->base === null
@@ -196,7 +206,7 @@ class Type {
                 ? Token::text('')
                 : Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->name),
+                    Token::text($build->getDbPrefix() . $this->getName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),
@@ -211,7 +221,7 @@ class Type {
             Token::array(array_map(function ($link) use ($build) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->name),
+                    Token::text($build->getDbPrefix() . $this->getName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),
@@ -233,7 +243,7 @@ class Type {
             Token::array(array_map(function ($joint) use ($build) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->name),
+                    Token::text($build->getDbPrefix() . $this->getName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),
@@ -270,5 +280,16 @@ class Type {
         $replace = array("\\\\","\\0","\\n", "\\r", "\'", '\"', "\\Z");
     
         return str_replace($search, $replace, $value);
+    }
+
+    public function import(callable $renamer, callable $env) {
+        $this->name = $renamer($this->name);
+        $this->base = $renamer($this->base);
+        foreach ($this->links as $link)
+            $link->import($renamer);
+        foreach ($this->joints as $joint)
+            $joint->import($renamer);
+        foreach ($this->access as $query)
+            $query->import($renamer, $env);
     }
 }

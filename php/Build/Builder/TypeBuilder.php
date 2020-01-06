@@ -748,6 +748,36 @@ class TypeBuilder {
                 }
                 return $result;
             })()),
+            //helper
+            (function () use ($type) { 
+                foreach ($type->getAccess() as $query)
+                    if ($query->getCache())
+                        return true;
+                return false;
+            })()
+                ? Token::multi(
+                    Token::nl(),
+                    Token::textnlpush('private static function _isPathSet(&$result, array $haystack, array $needles) {'),
+                    Token::textnlpush('foreach ($needles as $needle) {'),
+                    Token::textnlpush('if (!isset($haystack[$needle]))'),
+                    Token::textnlpop('return false;'),
+                    Token::textnlpop('$haystack = $haystack[$needle];'),
+                    Token::textnl('}'),
+                    Token::textnlpop('return ($result = $haystack) !== null;'),
+                    Token::textnl('}'),
+                    Token::nl(),
+                    Token::textnlpush('private static function _setAtPath($value, &$haystack, array $needles) {'),
+                    Token::textnlpush('if (count($needles) == 0) {'),
+                    Token::textnl('$haystack = $value;'),
+                    Token::textnlpop('return;'),
+                    Token::textnl('}'),
+                    Token::textnl('$needle = array_shift($needles);'),
+                    Token::textnlpush('if (!isset($haystack[$needle]))'),
+                    Token::textnlpop('$haystack[$needle] = [];'),
+                    Token::textnlpop('self::_setAtPath($value, $haystack[$needle], $needles);'),
+                    Token::textnl('}'),
+                )
+                : Token::text(''),
             //querys
             Token::array(array_map(function ($query) use ($config, $data, $type) {
                 $bound = self::getBounds($data->getEnvironment(), $type, $query, $query->getBounds());
@@ -757,8 +787,39 @@ class TypeBuilder {
                 switch (true) {
                     case $query->isSearchQuery():
                         $content = Token::multi(
-                            Token::textnl('$list = array();'),
-                            Token::textnlpush('$result = \\DB::getResult(""'),
+                            $query->getCache()
+                                ? Token::multi(
+                                    Token::text('if (!$_ignoreCache && self::_isPathSet($_result, self::$buffer'),
+                                    Token::text(ucfirst($query->getName())),
+                                    Token::text(', ['),
+                                    Token::array(self::intersperce(array_merge(
+                                        array_map(function ($name) use ($query) {
+                                            return self::getBufferValueKey(
+                                                $query->getInputVarType($name),
+                                                Token::multi(
+                                                    Token::text('$'),
+                                                    Token::text($name)
+                                                )
+                                            );
+                                        }, $query->getInputVarNames()),
+                                        array_map(function ($name) {
+                                            return Token::multi(
+                                                Token::text('$'),
+                                                Token::text($name),
+                                                Token::text('->getId()')
+                                            );
+                                        }, $query->getInputObjNames())
+                                    ), Token::text(', '))),
+                                    Token::textnlpush(']))'),
+                                    Token::textnlpop('return $_result;')
+                                )
+                                : Token::text(''),
+                            Token::text('$_list = '),
+                            $query->isLimitFirst()
+                                ? Token::text('null')
+                                : Token::text('array()'),
+                            Token::textnl(';'),
+                            Token::textnlpush('$_result = \\DB::getResult(""'),
                             Token::frame(Token::multi(
                                 Token::text('SELECT id'),
                                 Token::array(array_map(function ($name) {
@@ -784,15 +845,63 @@ class TypeBuilder {
                                 Token::text('WHERE '),
                             ), '. "', '" . PHP_EOL', 'addslashes'),
                             $bound,
+                            $query->isLimitFirst()
+                                ? Token::multi(
+                                    Token::textnl('" . PHP_EOL'),
+                                    Token::text('. "LIMIT 1')
+                                )
+                                : Token::text(''),
                             Token::textnlpop(';"'),
                             Token::textnl(');'),
-                            Token::textnlpush('while ($entry = $result->getEntry())'),
-                            Token::textnlpush('if (($obj = self::loadFromDbResult($entry)) !== null)'),
-                            Token::textnlpop('$list []= $obj;'),
-                            Token::pop(),
-                            Token::textnl('return $list;')
+                            $query->isLimitFirst()
+                                ? Token::multi(
+                                    Token::textnlpush('if ($_entry = $_result->getEntry())'),
+                                    Token::textnlpush('if (($_obj = self::loadFromDbResult($_entry)) !== null)'),
+                                    Token::textnlpop('$_list = $_obj;'),
+                                    Token::pop(),
+                                )
+                                : Token::multi(
+                                    Token::textnlpush('while ($_entry = $_result->getEntry())'),
+                                    Token::textnlpush('if (($_obj = self::loadFromDbResult($_entry)) !== null)'),
+                                    Token::textnlpop('$_list []= $_obj;'),
+                                    Token::pop(),
+                                ),
+                            $query->getCache()
+                                ? Token::multi(
+                                    Token::text('self::_setAtPath($_list, self::$buffer'),
+                                    Token::text(ucfirst($query->getName())),
+                                    Token::text(', ['),
+                                    Token::array(self::intersperce(array_merge(
+                                        array_map(function ($name) use ($query) {
+                                            return self::getBufferValueKey(
+                                                $query->getInputVarType($name),
+                                                Token::multi(
+                                                    Token::text('$'),
+                                                    Token::text($name)
+                                                )
+                                            );
+                                        }, $query->getInputVarNames()),
+                                        array_map(function ($name) use ($query, $data) {
+                                            return Token::multi(
+                                                Token::text('$'),
+                                                Token::text($name),
+                                                Token::text('->getId()')
+                                            );
+                                        }, $query->getInputObjNames())
+                                    ), Token::text(', '))),
+                                    Token::textnl(']);'),
+                                )
+                                : Token::text(''),
+                            Token::textnl('return $_list;')
                         );
-                        $returnValue = Token::text('array');
+                        $returnValue = $query->isLimitFirst()
+                            ? Token::multi(
+                                Token::text('?'),
+                                Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
+                                Token::text('\\Data\\'),
+                                Token::text($type->getName())
+                            )
+                            : Token::text('array');
                         break;
                     case $query->isDeleteQuery():
                         $content = Token::multi(
@@ -826,6 +935,12 @@ class TypeBuilder {
                                 Token::text('WHERE '),
                             ), '. "', '" . PHP_EOL', 'addslashes'),
                             $bound,
+                            $query->isLimitFirst()
+                                ? Token::multi(
+                                    Token::textnl('" . PHP_EOL'),
+                                    Token::text('. "LIMIT 1')
+                                )
+                                : Token::text(''),
                             Token::textnlpop(';"'),
                             Token::textnl(');'),
                             Token::textnl('$result->free();'),
@@ -835,6 +950,14 @@ class TypeBuilder {
                 }
                 return Token::multi(
                     Token::nl(),
+                    $query->getCache()
+                        ? Token::multi(
+                            Token::text('private static $buffer'),
+                            Token::text(\ucfirst($query->getName())),
+                            Token::textnl(' = null;'),
+                            Token::nl()
+                        )
+                        : Token::text(''),
                     Token::text('public static function '),
                     Token::text($query->getName()),
                     Token::text('('),
@@ -858,7 +981,12 @@ class TypeBuilder {
                                 Token::text(' $'),
                                 Token::text($name)
                             );
-                        }, $query->getInputObjNames())
+                        }, $query->getInputObjNames()),
+                        $query->getCache()
+                            ? array(
+                                Token::text('$_ignoreCache = false')
+                            )
+                            : array()
                     ), Token::text(', '))),
                     Token::text(')'),
                     $returnValue === null ? Token::text('') 
@@ -1028,6 +1156,30 @@ class TypeBuilder {
                         break;
                     default: return null;
                 }
+            case $bound instanceof \Data\InSetBound:
+                $c = self::getBounds($env, $type, $query, $bound->getContent());
+                $t = $query->getInputVarType($bound->getList());
+                if ($c == null)
+                    return null;
+                return Token::multi(
+                    Token::text('('),
+                    $c,
+                    Token::textnlpush('IN (" . implode('),
+                    Token::textnl('\', \','),
+                    Token::textnlpush('array_map(function ($e) {'),
+                    Token::text('return '),
+                    $t !== null
+                        ? self::getWrappedTypeForSql(
+                            $t,
+                            Token::text('$e')
+                        )
+                        : Token::text('$e->getId()'),
+                    Token::textnlpop(';'),
+                    Token::text('}, $'),
+                    Token::text($bound->getList()),
+                    Token::textnlpop(')'),
+                    Token::text(') . "))')
+                );
             default: return null;
         }
     }
@@ -1138,7 +1290,35 @@ class TypeBuilder {
                 break;
         }
         return $entry;
+    }
 
+    private static function getBufferValueKey(string $type, Token $entry): Token {
+        switch ($type) {
+            case 'bool':
+            case 'byte':
+            case 'short':
+            case 'int':
+            case 'long':
+            case 'sbyte':
+            case 'ushort':
+            case 'uint':
+            case 'ulong':
+            case 'float':
+            case 'double':
+            case 'string':
+            case 'bytes':
+            case 'date':
+                return $entry;
+            case 'json':
+                return Token::multi(
+                    Token::text('json_encode('),
+                    $entry,
+                    Token::text(', JSON_UNESCAPED_UNICODE '),
+                    Token::text('| JSON_UNESCAPED_SLASHES '),
+                    Token::text('| JSON_NUMERIC_CHECK)')
+                );
+        }
+        return $entry;
     }
 
     private static function getConversionOfVariable(string $type, $value): Token {

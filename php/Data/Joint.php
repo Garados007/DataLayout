@@ -35,4 +35,8 @@ class Joint {
 
         return $joint;
     }
+    
+    public function import(callable $renamer) {
+        $this->target = $renamer($this->target);
+    }
 }

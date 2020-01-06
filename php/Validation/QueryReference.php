@@ -39,12 +39,15 @@ class QueryReference {
     }
 
     private function checkQuery(\Data\Query $query, string $type, array $env, array $attr, array $joints): ?string {
+        if (!$query->isSearchQuery() && $query->getCache())
+            return 'Type ' . $type . ' query ' . $query->getName()
+                . ': only search querys can be cached.';
         $vars = array();
         $objs = array();
         foreach ($query->getInputVarNames() as $var)
-            $vars[$var] = $query->getInputVarType($var);
+            $vars[$var] = $query->isInputVarArray($var);
         foreach ($query->getInputObjNames() as $obj) 
-            $objs[$obj] = $query->getInputObjTarget($obj);
+            $objs[$obj] = $query->isInputObjArray($obj);
         $error = $this->checkBound($query->getBounds(), $env, $attr, $joints, $vars, $objs);
         if ($error != null)
             return 'Type ' . $type . ' query ' . $query->getName() . ' -> ' . $error;
@@ -56,12 +59,16 @@ class QueryReference {
     {
         switch (true) {
             case $bound instanceof \Data\InputBound: {
-                if (!isset($vars[$bound->getName()]))
+                if (!array_key_exists($bound->getName(), $vars))
                     return 'Input: variable '.$bound->getName().' not found';
+                if ($vars[$bound->getName()])
+                    return 'Input: variable '.$bound->getName().' is an array (use "InSet" instead)';
             } break;
             case $bound instanceof \Data\ObjectBound: {
-                if (!isset($obj[$bound->getName()]))
+                if (!array_key_exists($bound->getName(), $obj[]))
                     return 'Object: variable '.$bound->getName().' not found';
+                if ($obj[$bound->getName()])
+                    return 'Object: variable '.$bound->getName().' is an array (use "InSet" instead)';
             } break;
             case $bound instanceof \Data\TargetBound: {
                 if (!isset($attr[$bound->getName()]))
@@ -98,6 +105,20 @@ class QueryReference {
                 $error = $this->checkBound($bound->getRight(), $env, $attr, $joints, $vars, $obj);
                 if ($error !== null)
                     return 'Bool [2] -> ' . $error;
+            } break;
+            case $bound instanceof \Data\InSetBound: {
+                $error = $this->checkBound($bound->getContent(), $env, $attr, $joints, $vars, $obj);
+                if ($error !== null)
+                    return 'Inset -> ' . $error;
+                if (array_key_exists($bound->getList(), $vars)) {
+                    if (!$vars[$bound->getList()])
+                        return 'Inset: list ' . $bound->getList() . ' is not an array';
+                }
+                elseif (array_key_exists($bound->getList(), $obj)) {
+                    if (!$obj[$bound->getList()])
+                        return 'Inset: list ' . $bound->getList() . ' is not an array';
+                }
+                else return 'Inset: input or object ' . $bound->getList() . ' not found';
             } break;
             default: 
                 return 'unknown type ' . gettype($bound);

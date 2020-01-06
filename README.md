@@ -130,6 +130,8 @@ Hint: If you create a link that points to the same type and the source and targe
 
 Create a load or delete query. Load querys will search for all records of this type that match the condition and returns the objects. Delete querys will search for all records of this type that match the condition and delete them.
 
+You can define that a query will only perform with the first found entry. It will returned or deleted depending on the mode.
+
 
 ## future plans
 
@@ -141,10 +143,8 @@ This is a list of possible extensions that I plan to maybe implement:
     - different data storages
 - more configuration options
 - automated test cases (I have tested the current stuff by hand)
-- optional cache query result
 - modify query
-- array input at querys to select a member out of an array
-- support data extensions with type prefixes
+- automated querys created by unique attributes
 
 ## community support
 

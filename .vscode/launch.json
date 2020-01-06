@@ -43,6 +43,22 @@
             "cwd": "${workspaceFolder}/php/test",
             "port": 9000,
             "args": []
-        }
+        },
+        {
+            "name": "Real Build",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/php/build.php",
+            "cwd": "${workspaceFolder}/php",
+            "port": 9000,
+            "args": [
+                "-f",
+                "S:\\Exchange\\htdocs\\werwolf\\doc\\version-1.0\\db\\db-schema.xml",
+                "-o",
+                "test",
+                "--db-script",
+                "../lib/script/db.php"
+            ]
+        },
     ]
 }

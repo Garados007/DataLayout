@@ -81,11 +81,11 @@ class BuildManager {
         else return null;
     }
 
-    public static function preparePath(string $path): string {
+    public static function preparePath(string $path, ?string $cwd = null): string {
         $path = self::getAbsolute($path);
         $is_root = preg_match('/^(\/|[A-Za-z]\:\/)/', $path);
         if (!$is_root) {
-            $path = getcwd() . '/' . $path;
+            $path = ($cwd === null ? getcwd() : $cwd) . '/' . $path;
             $path = self::getAbsolute($path);
         }
         return $path;
@@ -133,11 +133,39 @@ class BuildManager {
             ).implode(DIRECTORY_SEPARATOR, $absolutes);
     }
 
+    private function preInit(string $dataPath, array $ignoreExtensions = array()) {
+        $this->loadData($dataPath);
+        //load extensions
+        foreach ($this->data->getExtensions() as $ext) {
+            $path = self::preparePath($ext->getFile(), dirname($dataPath));
+            if (\in_array($path, $ignoreExtensions)) {
+                if ($ext->isRequired())
+                    throw new \Exception('extension cannot loaded: ' . $path);
+                else continue;
+            }
+            $ignoreExtensions []= $path;
+            //load extension
+            $client = new BuildManager($this->config);
+            $client->preInit(
+                $path,
+                $ignoreExtensions
+            );
+            //import extension
+            $this->data->import(
+                $client->data, 
+                $ext->isEnvAddPrefix(),
+                $ext->getPrefix(), 
+                $path
+            );
+        }
+    }
+
     public function init(string $dataPath): bool {
         try {
             if (!$this->validateConfig($this->config)) 
                 throw new \Exception('Invalid config');
-            $this->loadData($dataPath);
+            $this->preInit($dataPath, array($dataPath));
+            //validate self
             $this->validateData();
         }
         catch (\Exception $e) {

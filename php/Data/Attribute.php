@@ -105,4 +105,8 @@ class Attribute {
 
         return $attr;
     }
+
+    public function import(callable $renamer) {
+        $this->name = $renamer($this->name);
+    }
 }
