@@ -845,12 +845,46 @@ class TypeBuilder {
                                 Token::text('WHERE '),
                             ), '. "', '" . PHP_EOL', 'addslashes'),
                             $bound,
-                            $query->isLimitFirst()
+                            count($query->getSortNames()) > 0 
                                 ? Token::multi(
                                     Token::textnl('" . PHP_EOL'),
-                                    Token::text('. "LIMIT 1')
+                                    Token::text('. "SORT BY '),
+                                    Token::array(self::intersperce(array_map(function ($name) use ($query) {
+                                        return Token::multi(
+                                            Token::text('`'),
+                                            Token::text($name),
+                                            Token::text('` '),
+                                            Token::text($query->getSortAscend($name) ? 'ASC' : 'DESC')
+                                        );
+                                    }, $query->getSortNames()), Token::text(', ')))
                                 )
                                 : Token::text(''),
+                            (function () use ($query, $data) {
+                                switch (true) {
+                                    case $query->isLimitFirst():
+                                        return Token::multi(
+                                            Token::textnl('" . PHP_EOL'),
+                                            Token::text('. "LIMIT 1')
+                                        );
+                                    case $query->isLimitInput():
+                                        return Token::multi(
+                                            Token::textnl('" . PHP_EOL'),
+                                            Token::text('. "LIMIT " . $'),
+                                            Token::text($query->getLimitVar()),
+                                            Token::text(' . "')
+                                        );
+                                    case $query->isLimitEnv():
+                                        return Token::multi(
+                                            Token::textnl('" . PHP_EOL'),
+                                            Token::text('. "LIMIT " . '),
+                                            Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
+                                            Token::text('\\Environment::get'),
+                                            Token::text(ucfirst($query->getLimitVar())),
+                                            Token::text('() . "')
+                                        );
+                                    default: return Token::text('');
+                                }
+                            })(),
                             Token::textnlpop(';"'),
                             Token::textnl(');'),
                             $query->isLimitFirst()

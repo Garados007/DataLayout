@@ -48,9 +48,59 @@ class QueryReference {
             $vars[$var] = $query->isInputVarArray($var);
         foreach ($query->getInputObjNames() as $obj) 
             $objs[$obj] = $query->isInputObjArray($obj);
+        switch ($query->getUse()) {
+            case 'all':
+            case 'first':
+                if ($query->getLimitVar() !== null)
+                    return 'Type ' . $type . ' query ' . $query->getName()
+                        . ': limitVar is only allowed for input and env limits';
+                break;
+            case 'input':
+                if ($query->getLimitVar() === null)
+                    return 'Type ' . $type . ' query ' . $query->getName()
+                        . ': limitVar is required for input and env limits';
+                break;
+                if (!isset($vars[$query->getLimitVar()]))
+                    return 'Type ' . $type . ' query ' . $query->getName()
+                        . ': limitVar ' . $query->getLimitVar()
+                        . ' is not found as input ';
+                if (!in_array(
+                    $query->getInputVarType($query->getLimitVar()), 
+                    ['byte', 'short', 'int', 'long', 'sbyte', 'ushort', 'uint', 'ulong'])
+                    ) return 'Type ' . $type . ' query ' . $query->getName()
+                        .  ': input variable ' . $query->getLimitVar()
+                        . ' cannot be used as limit var. integer expected.';
+                break;
+            case 'env':
+                if ($query->getLimitVar() === null)
+                    return 'Type ' . $type . ' query ' . $query->getName()
+                        . ': limitVar is required for input and env limits';
+                break;
+                if (!isset($env[$query->getLimitVar()]))
+                    return 'Type ' . $type . ' query ' . $query->getName()
+                        . ': limitVar ' . $query->getLimitVar()
+                        . ' is not found as environment variable';
+                if (!in_array(
+                    $env[$query->getLimitVar()], 
+                    ['byte', 'short', 'int', 'long', 'sbyte', 'ushort', 'uint', 'ulong'])
+                    ) return 'Type ' . $type . ' query ' . $query->getName()
+                        .  ': environment variable ' . $query->getLimitVar()
+                        . ' cannot be used as limit var. integer expected.';
+                break;
+        }
         $error = $this->checkBound($query->getBounds(), $env, $attr, $joints, $vars, $objs);
         if ($error != null)
             return 'Type ' . $type . ' query ' . $query->getName() . ' -> ' . $error;
+        $used = array();
+        foreach ($query->getSortNames() as $name) {
+            if (\in_array($name, $used))
+                return 'Type ' . $type . ' query ' . $query->getName()
+                    . ': cannot sort by ' . $name . ' twice';
+            $used []= $name;
+            if (!isset($attr[$name]) && !isset($joints[$name]))
+                return 'Type ' . $type . ' query ' . $query->getName()
+                    . ': type doesn\'t contain sort member ' . $name;
+        }
         return null;
     }
 

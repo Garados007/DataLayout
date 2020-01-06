@@ -215,7 +215,7 @@
 
     <xs:complexType name="Query">
         <xs:sequence>
-            <xs:element name="Inputs" minOccurs="1" maxOccurs="1">
+            <xs:element name="Inputs" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:sequence maxOccurs="unbounded">
                         <xs:element name="InputVar" minOccurs="0" maxOccurs="unbounded">
@@ -240,9 +240,29 @@
                 </xs:unique>
             </xs:element>
             
-            <xs:element name="Bounds" minOccurs="1" maxOccurs="1">
+            <xs:element name="Bounds" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:group ref="boundBoolContent" minOccurs="1" maxOccurs="1" />
+                </xs:complexType>
+            </xs:element>
+
+            <xs:element name="Sort" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="Member" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:attribute name="name" type="keyType" use="required" />
+                                <xs:attribute name="order" use="optional" default="ascend">
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:enumeration value="ascend" />
+                                            <xs:enumeration value="descend" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
@@ -277,8 +297,18 @@
                 <xs:restriction base="xs:string">
                     <xs:enumeration value="all" />
                     <xs:enumeration value="first" />
+                    <xs:enumeration value="input" />
+                    <xs:enumeration value="env" />
                 </xs:restriction>
             </xs:simpleType>
+        </xs:attribute>
+        <xs:attribute name="limitVar" type="keyType" use="optional">
+            <xs:annotation>
+                <xs:documentation>
+                    This attribute is only required if limit is set to 'input'
+                    or 'env'. This will provide the variable name.
+                </xs:documentation>
+            </xs:annotation>
         </xs:attribute>
         <xs:attribute name="cache" type="xs:boolean" default="false" use="optional" />
     </xs:complexType>

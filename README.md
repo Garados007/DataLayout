@@ -145,6 +145,8 @@ This is a list of possible extensions that I plan to maybe implement:
 - automated test cases (I have tested the current stuff by hand)
 - modify query
 - automated querys created by unique attributes
+- sort of querys results
+- limit output of arrays (max result limit), limit can bound to input or env
 
 ## community support
 

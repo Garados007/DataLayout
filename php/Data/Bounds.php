@@ -192,6 +192,10 @@ abstract class BooleanOutputBound extends Bound {
 
 class TrueBound extends BooleanOutputBound {
     
+    public static function create(): TrueBound {
+        return new TrueBound();
+    }
+
     public static function loadBoundFromXml(\SimpleXMLElement $element): ?TrueBound {
         if ($element->getName() != 'True')
             return null;
