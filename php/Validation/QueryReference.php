@@ -170,6 +170,11 @@ class QueryReference {
                 }
                 else return 'Inset: input or object ' . $bound->getList() . ' not found';
             } break;
+            case $bound instanceof \Data\IsNullBound: {
+                $error = $this->checkBound($bound->getContent(), $env, $attr, $joints, $vars, $obj);
+                if ($error !== null)
+                    return 'IsNull -> ' . $error;
+            } break;
             default: 
                 return 'unknown type ' . gettype($bound);
         }

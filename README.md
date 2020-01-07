@@ -152,9 +152,6 @@ This is a list of possible extensions that I plan to maybe implement:
     - this members are limited on the current entry scope (no linking, ...)
     - this members are ideal for: sorting, comparing, computing
 - add math operator to bounds (+, -, *, /)
-- add is null bound
-- add constant bounds
-    - time now
 
 ## community support
 

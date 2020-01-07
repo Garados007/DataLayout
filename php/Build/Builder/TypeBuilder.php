@@ -1214,6 +1214,15 @@ class TypeBuilder {
                     Token::textnlpop(')'),
                     Token::text(') . "))')
                 );
+            case $bound instanceof \Data\IsNullBound:
+                $c = self::getBounds($env, $type, $query, $bound->getContent());
+                if ($c == null)
+                    return null;
+                return Token::multi(
+                    Token::text('('),
+                    $c,
+                    Token::text(' IS NULL)')
+                );
             default: return null;
         }
     }
@@ -1313,7 +1322,11 @@ class TypeBuilder {
                 );
                 break;
             case 'date':
-                $entry = Token::multi(Token::text('(string)'), $entry);
+                $entry = Token::multi(
+                    Token::text('\'FROM_UNIXTIME(\' . '), 
+                    $entry,
+                    Token::text(' . \')\'')
+                );
                 break;
             case 'json':
                 $entry = Token::multi(

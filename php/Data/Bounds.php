@@ -20,6 +20,7 @@ abstract class Bound {
             case 'Compare': return \Data\CompareBound::loadBoundFromXml($element);
             case 'Bool': return \Data\BoolBound::loadBoundFromXml($element);
             case 'InSet': return \Data\InSetBound::loadBoundFromXml($element);
+            case 'IsNull': return \Data\IsNullBound::loadBoundFromXml($element);
             //unknown
             default: return null;
         }
@@ -346,6 +347,31 @@ class InSetBound extends BooleanOutputBound {
         if ($inset->content === null)
             return null;
         return $inset;
+    }
+
+    public function import(callable $env) {
+        $this->content->import($env);
+    }
+}
+
+class IsNullBound extends BooleanOutputBound {
+    private $content;
+
+    public function getContent(): Bound {
+        return $this->content;
+    }
+
+    public static function loadBoundFromXml(\SimpleXMLElement $element): ?IsNullBound {
+        if ($element->getName() != 'IsNull')
+            return null;
+
+        $isnull = new \Data\IsNullBound();
+        $children = $element->children();
+        $isnull->content = \Data\Bound::loadFromXml($children[0]);
+
+        if ($isnull->content === null)
+            return null;
+        return $isnull;
     }
 
     public function import(callable $env) {
