@@ -76,6 +76,20 @@
                                     </xs:simpleType>
                                 </xs:attribute>
                                 <xs:attribute name="publicMemberAccess" type="xs:boolean" default="false" />
+                                <xs:attribute name="maxDbTableNameLength" default="0">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            If this value is not 0 every type name will trimmed and suffixed
+                                            with its index to fit the space requirements. The prefix in dbPrefix
+                                            will be ignored in calculation.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:unsignedInt">
+                                            <xs:pattern value="0|[3-9]|[1-9][0-9]+" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
                             </xs:complexType>
                         </xs:element>
                         <xs:element name="PHP-GraphQL" minOccurs="0" maxOccurs="1">

@@ -242,7 +242,7 @@ class TypeBuilder {
                     Token::nl(),
                     Token::text('FROM `'),
                     Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                    Token::text($type->getName()),
+                    Token::text($type->getDbName()),
                     Token::textnl('`'),
                     Token::array(array_map(function ($name) use ($data) {
                         return Token::multi(
@@ -523,7 +523,7 @@ class TypeBuilder {
                             Token::frame(Token::multi(
                                 Token::text('INSERT INTO `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($type->getName()),
+                                Token::text($type->getDbName()),
                                 Token::textnlpush('`'),
                                 Token::text('('),
                                 Token::array(self::intersperce(array_merge(
@@ -578,7 +578,7 @@ class TypeBuilder {
                             Token::frame(Token::multi(
                                 Token::text('INSERT INTO `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($type->getName()),
+                                Token::text($type->getDbName()),
                                 Token::textnlpush('`'),
                                 Token::text('(id'),
                                 Token::array(array_merge(
@@ -642,7 +642,7 @@ class TypeBuilder {
                     Token::textnlpop('return;'),
                     Token::text('$sql = \'UPDATE `'),
                     Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                    Token::text($type->getName()),
+                    Token::text($type->getDbName()),
                     Token::textnl('` SET \';'),
                     Token::textnl('$first = true;'),
                     Token::textnlpush('foreach ($diff as $key => $value) {'),
@@ -699,7 +699,7 @@ class TypeBuilder {
                     : Token::textnl('parent::delete();'),
                 Token::text('$result = \\DB::getResult(\'DELETE FROM `'),
                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                Token::text($type->getName()),
+                Token::text($type->getDbName()),
                 Token::textnl('` WHERE id=\' . $this->id . \';\');'),
                 Token::textnl('$result->free();'),
                 Token::textnl('unset(self::$buffer[$this->id]);'),
@@ -723,7 +723,7 @@ class TypeBuilder {
                                 Token::textnl('SELECT id'),
                                 Token::text('FROM `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($name),
+                                Token::text($data->getType($name)->getDbName()),
                                 Token::textnl('`'),
                                 Token::text('WHERE `'),
                                 Token::text($joint->getName()),
@@ -832,7 +832,7 @@ class TypeBuilder {
                                 Token::nl(),
                                 Token::text('FROM `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($type->getName()),
+                                Token::text($type->getDbName()),
                                 Token::textnl('`'),
                                 Token::array(array_map(function ($name) use ($data) {
                                     return Token::multi(
@@ -943,7 +943,7 @@ class TypeBuilder {
                             Token::frame(Token::multi(
                                 Token::text('DELETE `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($type->getName()),
+                                Token::text($type->getDbName()),
                                 Token::text('`'),
                                 Token::array(array_map(function ($name) use ($data) {
                                     return Token::multi(
@@ -956,7 +956,7 @@ class TypeBuilder {
                                 Token::nl(),
                                 Token::text('FROM `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                Token::text($type->getName()),
+                                Token::text($type->getDbName()),
                                 Token::textnl('`'),
                                 Token::array(array_map(function ($name) use ($data) {
                                     return Token::multi(

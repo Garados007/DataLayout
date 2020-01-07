@@ -6,6 +6,7 @@ class Build {
     private $dbPrefix;
     private $classNamespace;
     private $publicMemberAccess;
+    private $maxDbTableNameLength;
 
     private function __construct() {}
 
@@ -29,6 +30,10 @@ class Build {
         return $this->publicMemberAccess;
     }
 
+    public function getMaxDbTableNameLength(): int {
+        return $this->maxDbTableNameLength;
+    }
+
     public static function empty(): Build {
         $build = new Build();
         $build->supported = true;
@@ -36,6 +41,7 @@ class Build {
         $build->dbPrefix = '';
         $build->classNamespace = '';
         $build->publicMemberAccess = false;
+        $build->maxDbTableNameLength = 0;
         return $build;
     }
 
@@ -61,6 +67,8 @@ class Build {
                     (string)$element->PHP->attributes()->publicMemberAccess,
                     FILTER_VALIDATE_BOOLEAN
                 );
+            if (isset($element->PHP->attributes()->maxDbTableNameLength))
+                $build->maxDbTableNameLength = (int)$element->PHP->attributes()->maxDbTableNameLength;
 
             if ($build->classNamespace !== '')
                 $build->classNamespace = '\\' . $build->classNamespace;

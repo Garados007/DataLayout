@@ -16,6 +16,7 @@ class Type {
     private $name;
     private $base;
     private $extension = null;
+    private $dbName = null;
     
     private function __construct() {}
 
@@ -63,6 +64,14 @@ class Type {
 
     public function setExtension(?string $extension) {
         $this->extension = $extension;
+    }
+
+    public function getDbName(): string {
+        return $this->dbName ?: $this->name;
+    }
+
+    public function setDbName(string $name) {
+        $this->dbName = $name;
     }
 
     public static function loadFromXml(\SimpleXMLElement $element): ?\Data\Type {
@@ -114,7 +123,7 @@ class Type {
     public function buildSqlCreateTable(\Data\Build $build): Token {
         return Token::multi(
             Token::text('CREATE TABLE IF NOT EXISTS `'),
-            Token::text($build->getDbPrefix() . $this->getName()),
+            Token::text($build->getDbPrefix() . $this->getDbName()),
             Token::textnlpush('` ('),
             Token::text('id BIGINT UNSIGNED NOT NULL '),
             $this->base === null
@@ -206,7 +215,7 @@ class Type {
                 ? Token::text('')
                 : Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->getName()),
+                    Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),
@@ -221,7 +230,7 @@ class Type {
             Token::array(array_map(function ($link) use ($build) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->getName()),
+                    Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),
@@ -243,7 +252,7 @@ class Type {
             Token::array(array_map(function ($joint) use ($build) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
-                    Token::text($build->getDbPrefix() . $this->getName()),
+                    Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
                     Token::text($build->getDbPrefix()),

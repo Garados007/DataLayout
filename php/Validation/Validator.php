@@ -5,6 +5,7 @@ require_once __DIR__ . '/TypeCycleReference.php';
 require_once __DIR__ . '/LinkReference.php';
 require_once __DIR__ . '/QueryReference.php';
 require_once __DIR__ . '/TargetReference.php';
+require_once __DIR__ . '/DbTableNames.php';
 
 class Validator {
     public function check(\Data\DataDefinition $data): ?string {
@@ -23,6 +24,11 @@ class Validator {
         $error = (new QueryReference())->check($data);
         if ($error !== null)
             return '[QueryReference] ' . $error;
+
+        //Optimizer
+        $error = (new DbTableNames())->check($data);
+        if ($error !== null)
+            return '[DbTableNames] ' . $error;
 
         return null;
     }
