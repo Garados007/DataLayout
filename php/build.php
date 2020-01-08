@@ -2,16 +2,18 @@
 
 require_once __DIR__ . '/Build/BuildManager.php';
 require_once __DIR__ . '/Build/BuildConfig.php';
+require_once __DIR__ . '/Data/Environment.php';
 
 (function ()  {
     $start = microtime(true);
-    $opts = getopt('f:o:r::', array(
+    $opts = getopt('f:o:r::p:', array(
         'output:',
         'db-output:',
         'setup-output:',
         'db-script:',
         'file:',
         'relative::',
+        'profile:'
     ));
 
     $correctArgs = '  php build.php ((-f | --file) [build-file.php])'
@@ -19,7 +21,8 @@ require_once __DIR__ . '/Build/BuildConfig.php';
         . ' (--db-output [db-output-dir])'
         . ' (--setup-output [setup-output-dir])'
         . ' (--db-script [db-script-path.php])' 
-        . ' ((-r | --relative)'
+        . ' (-r | --relative)'
+        . ' ((-p | --profile) [profile-name])'
         . PHP_EOL;
 
     if ($opts === false) {
@@ -52,6 +55,9 @@ require_once __DIR__ . '/Build/BuildConfig.php';
         ? $opts['db-script']
         : null;
     $config->useRelativePaths = isset($opts['r']) || isset($opts['relative']);
+    $profile = isset($opts['p']) ? $opts['p']
+        : (isset($opts['profile']) ? $opts['profile'] : null);
+    \Data\Environment::setProfile($profile);
     
     if ($file === null) {
         echo 'expect a target file (with -f or --file)' . PHP_EOL;
@@ -68,6 +74,7 @@ require_once __DIR__ . '/Build/BuildConfig.php';
     }
 
     echo 'Prepare builder:' . PHP_EOL;
+    echo '  Profile:              ' . ($profile ?: 'default') . PHP_EOL;
     echo '  Type definition file: ' . \Build\BuildManager::preparePath($file) . PHP_EOL;
     echo '  Output root dir:      ' . \Build\BuildManager::preparePath($config->outputRoot) . PHP_EOL;
     echo '  DB Output dir:        ' . \Build\BuildManager::preparePath($config->dbOutputDir) . PHP_EOL;

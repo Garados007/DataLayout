@@ -6,6 +6,7 @@ require_once __DIR__ . '/Build.php';
 class Environment {
     private $envVars;
     private $build;
+    private static $profile = null;
 
     private function __construct() {}
 
@@ -24,6 +25,10 @@ class Environment {
         return $this->build;
     }
 
+    public static function setProfile(?string $profile) {
+        self::$profile = $profile;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?Environment {
         if ($element->getName() != "Environment")
             return null;
@@ -38,9 +43,26 @@ class Environment {
                 $env->envVars []= $attr;
             }
         
-        if (isset($element->Build))
-            $env->build = \Data\Build::loadFromXml($element->Build);
-        else $env->build = \Data\Build::empty();
+        if (isset($element->Build)) {
+            $node = null;
+            $expect = self::$profile ?: 'default';
+            $list = \is_array($element->Build) ? $element->Build : [ $element->Build ];
+            foreach ($list as $child) {
+                $name = isset($child->attributes()->profile)
+                    ? (string)$child->attributes()->profile
+                    : 'default';
+                if ($name == $expect) {
+                    $node = $child;
+                    break;
+                }
+            }
+            if ($node === null)
+                throw new \Exception('profile ' . $expect . ' not found');
+            $env->build = \Data\Build::loadFromXml($node);
+        }
+        elseif (self::$profile === null) 
+            $env->build = \Data\Build::empty();
+        else throw new \Exception('profile ' . self::$profile . ' not found');
 
         return $env;
     }
