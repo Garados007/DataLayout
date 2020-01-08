@@ -10,4 +10,6 @@ class BuildConfig {
     public $dbScriptPath;
 
     public $useRelativePaths;
+
+    public $buildMode = 'php';
 }

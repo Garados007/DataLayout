@@ -1,8 +1,8 @@
-<?php namespace Build\Builder;
+<?php namespace Build\Builder\Php;
 
-require_once __DIR__ . '/../../Data/DataDefinition.php';
-require_once __DIR__ . '/../BuildConfig.php';
-require_once __DIR__ . '/../Token.php';
+require_once __DIR__ . '/../../../Data/DataDefinition.php';
+require_once __DIR__ . '/../../BuildConfig.php';
+require_once __DIR__ . '/../../Token.php';
 
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;
@@ -40,7 +40,7 @@ class Setup {
                     return $type->buildSqlCreateTable($build);
                 }, $data->getTypes()),
                 array_map(function ($type) use($build, $data) {
-                    return $type->buildSqlAddForeignKeys($build);
+                    return $type->buildSqlAddForeignKeys($data, $build);
                 }, $data->getTypes())
             )),
                 '. \'', '\' . PHP_EOL', function ($str) { return \addslashes($str); }

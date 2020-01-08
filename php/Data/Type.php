@@ -5,6 +5,7 @@ require_once __DIR__ . '/Link.php';
 require_once __DIR__ . '/Joint.php';
 require_once __DIR__ . '/Query.php';
 require_once __DIR__ . '/TypeBucket.php';
+require_once __DIR__ . '/DataDefinition.php';
 require_once __DIR__ . '/../Build/Token.php';
 
 use \Build\Token as Token;
@@ -231,7 +232,7 @@ class Type {
         );
     }
 
-    public function buildSqlAddForeignKeys(\Data\Build $build): Token {
+    public function buildSqlAddForeignKeys(\Data\DataDefinition $data, \Data\Build $build): Token {
         return Token::multi(
             $this->base === null
                 ? Token::text('')
@@ -245,11 +246,11 @@ class Type {
                     Token::textnl('FOREIGN KEY (id)'),
                     Token::text('REFERENCES `'),
                     Token::text($build->getDbPrefix()),
-                    Token::text($this->base),
+                    Token::text($data->getType($this->base)->getDbName()),
                     Token::textnl('`(id)'),
                     Token::textnlpop('ON DELETE CASCADE;')
                 ),
-            Token::array(array_map(function ($link) use ($build) {
+            Token::array(array_map(function ($link) use ($build, $data) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
                     Token::text($build->getDbPrefix() . $this->getDbName()),
@@ -264,14 +265,14 @@ class Type {
                     Token::textnl('`)'),
                     Token::text('REFERENCES `'),
                     Token::text($build->getDbPrefix()),
-                    Token::text($link->getTarget()),
+                    Token::text($data->getType($link->getTarget())->getDbName()),
                     Token::text('`(`'),
                     Token::text($link->getTarAttribute()),
                     Token::textnl('`)'),
                     Token::textnlpop('ON DELETE CASCADE;')
                 );
             }, $this->links)),
-            Token::array(array_map(function ($joint) use ($build) {
+            Token::array(array_map(function ($joint) use ($build, $data) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
                     Token::text($build->getDbPrefix() . $this->getDbName()),
@@ -286,7 +287,7 @@ class Type {
                     Token::textnl('`)'),
                     Token::text('REFERENCES `'),
                     Token::text($build->getDbPrefix()),
-                    Token::text($joint->getTarget()),
+                    Token::text($data->getType($joint->getTarget())->getDbName()),
                     Token::textnl('`(`id`)'),
                     Token::textnlpop('ON DELETE CASCADE;')
                 );

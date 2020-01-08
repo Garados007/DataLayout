@@ -6,7 +6,8 @@ require_once __DIR__ . '/Data/Environment.php';
 
 (function ()  {
     $start = microtime(true);
-    $opts = getopt('f:o:r::p:', array(
+    $opts = getopt('b:f:o:r::p:', array(
+        'build:',
         'output:',
         'db-output:',
         'setup-output:',
@@ -16,7 +17,8 @@ require_once __DIR__ . '/Data/Environment.php';
         'profile:'
     ));
 
-    $correctArgs = '  php build.php ((-f | --file) [build-file.php])'
+    $correctArgs = '  php build.php ((-b | --build) (php))'
+        . ' ((-f | --file) [build-file.php])'
         . ' ((-o | --output) [output-dir])'
         . ' (--db-output [db-output-dir])'
         . ' (--setup-output [setup-output-dir])'
@@ -39,6 +41,8 @@ require_once __DIR__ . '/Data/Environment.php';
             : null
         );
     $config = new \Build\BuildConfig();
+    $config->buildMode = isset($opts['b']) ? $opts['b']
+        : (isset($opts['build']) ? $opts['build'] : 'php');
     $config->outputRoot = isset($opts['o']) 
         ? $opts['o'] 
         : ( isset($opts['output']) 
@@ -83,7 +87,12 @@ require_once __DIR__ . '/Data/Environment.php';
     echo '  Use relative paths:   ' . ($config->useRelativePaths ? 'true' : 'false') . PHP_EOL;
 
     echo 'Init builder job...' . PHP_EOL;
-    $builder = new \Build\BuildManager($config);
+    $builder = \Build\BuildManager::load($config);
+    if ($builder === null) {
+        echo 'unsupported build mode ' . $config->buildMode;
+        exit();
+        return;
+    }
     if (!$builder->init($file)) {
         echo 'Cannot initialize builder!' . PHP_EOL;
         echo 'cancel process.' . PHP_EOL;

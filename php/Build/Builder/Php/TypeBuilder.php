@@ -1,8 +1,8 @@
-<?php namespace Build\Builder;
+<?php namespace Build\Builder\Php;
 
-require_once __DIR__ . '/../../Data/DataDefinition.php';
-require_once __DIR__ . '/../BuildConfig.php';
-require_once __DIR__ . '/../Token.php';
+require_once __DIR__ . '/../../../Data/DataDefinition.php';
+require_once __DIR__ . '/../../BuildConfig.php';
+require_once __DIR__ . '/../../Token.php';
 
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;

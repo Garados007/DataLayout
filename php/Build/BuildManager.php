@@ -1,25 +1,33 @@
 <?php namespace Build;
 
 require_once __DIR__ . '/BuildConfig.php';
-require_once __DIR__ . '/Builder/EnvBuilder.php';
-require_once __DIR__ . '/Builder/Setup.php';
-require_once __DIR__ . '/Builder/TypeBuilder.php';
 require_once __DIR__ . '/Token.php';
 require_once __DIR__ . '/../Data/DataDefinition.php';
 require_once __DIR__ . '/../Validation/Validator.php';
+require_once __DIR__ . '/../Data/Build.php';
 
 use \Build\Token as Token;
 
-class BuildManager {
-    private $config;
-    private $data;
+abstract class BuildManager {
+    protected $config;
+    protected $data;
 
+    public static function load(\Build\BuildConfig $config): ?BuildManager {
+        switch ($config->buildMode) {
+            case 'php':
+                require_once __DIR__ . '/Builder/Php/BuildManager.php';
+                return new \Build\Builder\Php\BuildManager($config);
+            default:
+                return null;
+        }
+    }
 
     public function __construct(\Build\BuildConfig $config) {
         $this->config = $config;
+        \Data\Build::setBuildMode($config->buildMode);
     }
 
-    private function validateConfig(): bool {
+    protected function validateConfig(): bool {
         try {
             //putput root
             $this->config->outputRoot = self::preparePath($this->config->outputRoot);
@@ -74,7 +82,7 @@ class BuildManager {
         return $result;
     }
 
-    private static function getRoot(string $path): ?string {
+    protected static function getRoot(string $path): ?string {
         $matches = array();
         if (\preg_match('/^(\/|[a-zA-z]:\\\\)/', $path, $matches) === 1)
             return $matches[0];
@@ -92,7 +100,7 @@ class BuildManager {
     }
 
     //source: https://www.php.net/manual/de/function.self::preparePath.php#124254
-    private static function getAbsolute(string $path): string {
+    protected static function getAbsolute(string $path): string {
         // Cleaning path regarding OS
         $path = mb_ereg_replace('\\\\|/', DIRECTORY_SEPARATOR, $path, 'msr');
         // Check if path start with a separator (UNIX)
@@ -133,7 +141,7 @@ class BuildManager {
             ).implode(DIRECTORY_SEPARATOR, $absolutes);
     }
 
-    private function preInit(string $dataPath, array $ignoreExtensions = array()) {
+    protected function preInit(string $dataPath, array $ignoreExtensions = array()) {
         $this->loadData($dataPath);
         //load extensions
         foreach ($this->data->getExtensions() as $ext) {
@@ -175,7 +183,7 @@ class BuildManager {
         return true;
     }
 
-    private function loadData(string $dataPath) {
+    protected function loadData(string $dataPath) {
         if (!is_file($dataPath))
             throw new \Exception('data file doesn\'t exists.' . self::preparePath($dataPath));
         $content = file_get_contents($dataPath);
@@ -192,59 +200,29 @@ class BuildManager {
         $this->data = \Data\DataDefinition::loadFromXml($xml);
     }
 
-    private function validateData() {
+    protected function validateData() {
         $validator = new \Validation\Validator();
         $error = $validator->check($this->data);
         if ($error !== null)
             throw new \Exception($error);
 
         if (!$this->data->getEnvironment()->getBuild()->getSupported())
-            throw new \Exception('the php build is not supported by the type definition itself.');
+            throw new \Exception('the build is not supported by the type definition itself.');
     }
 
-    public function build() {
-        $this->buildEnv();
-        $this->buildSetup();
-        $this->buildTypes();
-    }
+    abstract public function build();
 
-    private function buildEnv() {
-        $builder = new \Build\Builder\EnvBuilder();
-        $token = $builder->buildEnvCode($this->config, $this->data);
-        $this->output(
-            $token,
-            $this->config->dbOutputDir . '/Environment.php'
-        );
-    }
-
-    private function buildSetup() {
-        $setup = new \Build\Builder\Setup();
-        $token = $setup->buildTokens($this->config, $this->data);
-        $this->output(
-            $token, 
-            $this->config->setupOutputDir . '/data-setup.php'
-        );
-    }
-
-    private function buildTypes() {
-        $builder = new \Build\Builder\TypeBuilder();
-        foreach ($this->data->getTypes() as $type) {
-            $token = $builder->buildTypeCode($this->config, $this->data, $type);
-            $path = $this->config->dbOutputDir . '/Data/' . $type->getName() . '.php';
-            $dir = dirname($path);
-            if (!is_dir($dir))
-                mkdir($dir, 0777, true);
-            $this->output($token, $path);
-        }
-    }
-
-    private function output(Token $token, string $path) {
+    protected function output(Token $token, string $path) {
         $text = $token->build();
         \file_put_contents($path, $text);
     }
 
     public static function execute(\Build\BuildConfig $config, string $dataPath): bool {
-        $builder = new self($config);
+        $builder = self::load($config);
+        if ($builder === null) {
+            echo 'error: unsupported build mode ' . $config->buildMode;
+            return false;
+        }
         if (!$builder->init($dataPath))
             return false;
         $builder->build();

@@ -1,19 +1,47 @@
 <?php namespace Data;
 
 class Build {
-    private $supported;
+    protected $supported;
+
+    protected function __construct() {
+        $this->supported = true;
+    }
+
+    public function getSupported(): bool {
+        return $this->supported;
+    }
+    public static function empty(): Build {
+        $build = new Build();
+        $build->supported = true;
+        return $build;
+    }
+
+    protected static $buildMode = 'php';
+
+    public static function setBuildMode(string $mode) {
+        self::$buildMode = $mode;
+    }
+
+    public static function loadFromXml(\SimpleXMLElement $element): ?Build {
+        if ($element->getName() != "Build")
+            return null;
+
+        switch (self::$buildMode) {
+            case 'php':
+                return PhpBuild::loadFromXml($element);
+            default:
+                throw new \Exception('build mode ' . self::$buildMode . ' is not supported');
+        }
+    }
+}
+
+class PhpBuild extends Build {
     private $dbEngine;
     private $dbPrefix;
     private $classNamespace;
     private $publicMemberAccess;
     private $maxDbTableNameLength;
     private $fullQuery;
-
-    private function __construct() {}
-
-    public function getSupported(): bool {
-        return $this->supported;
-    }
 
     public function getDbEngine(): string {
         return $this->dbEngine;
@@ -52,7 +80,7 @@ class Build {
     }
 
     public static function empty(): Build {
-        $build = new Build();
+        $build = new PhpBuild();
         $build->supported = true;
         $build->dbEngine = 'sql-mabron-db-connector';
         $build->dbPrefix = '';
