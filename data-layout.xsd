@@ -90,6 +90,24 @@
                                         </xs:restriction>
                                     </xs:simpleType>
                                 </xs:attribute>
+                                <xs:attribute name="fullQuery" default="auto">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            This will overwrite the behaviour of the types. 
+                                            If activated for each request all possible column 
+                                            values will be queried and the highest possible
+                                            type will be used. This could make the code and
+                                            execution time larger.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:enumeration value="none" />
+                                            <xs:enumeration value="auto" />
+                                            <xs:enumeration value="all" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
                             </xs:complexType>
                         </xs:element>
                         <xs:element name="PHP-GraphQL" minOccurs="0" maxOccurs="1">
@@ -299,6 +317,17 @@
         </xs:sequence>
         <xs:attribute name="name" type="keyType" use="required" />
         <xs:attribute name="base" type="keyType" use="optional" />
+        <xs:attribute name="fullQuery" type="xs:boolean" default="false">
+            <xs:annotation>
+                <xs:documentation>
+                    If activated it will always fetch all possible members
+                    and try to return the highest type. You will always get
+                    the real types of the values instead the queried type. 
+                    On the other hand the code and the execution time 
+                    could become larger.
+                </xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
     </xs:complexType>
 
     <xs:complexType name="Query">

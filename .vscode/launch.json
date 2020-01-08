@@ -29,7 +29,7 @@
                 "-f",
                 "..\\test.xml",
                 "-o",
-                "test",
+                "test2",
                 "--db-script",
                 "../lib/script/db.php",
                 "-r"

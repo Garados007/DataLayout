@@ -4,6 +4,7 @@ require_once __DIR__ . '/Attribute.php';
 require_once __DIR__ . '/Link.php';
 require_once __DIR__ . '/Joint.php';
 require_once __DIR__ . '/Query.php';
+require_once __DIR__ . '/TypeBucket.php';
 require_once __DIR__ . '/../Build/Token.php';
 
 use \Build\Token as Token;
@@ -15,8 +16,10 @@ class Type {
     private $access;
     private $name;
     private $base;
+    private $fullQuery;
     private $extension = null;
     private $dbName = null;
+    private $bucket = null;
     
     private function __construct() {}
 
@@ -58,6 +61,10 @@ class Type {
         return $this->base;
     }
 
+    public function getFullQuery(): bool {
+        return $this->fullQuery;
+    }
+
     public function getExtension(): ?string {
         return $this->extension;
     }
@@ -72,6 +79,14 @@ class Type {
 
     public function setDbName(string $name) {
         $this->dbName = $name;
+    }
+
+    public function getBucket(): ?TypeBucket {
+        return $this->bucket;
+    }
+
+    public function setBucket(?TypeBucket $bucket) {
+        $this->bucket = $bucket;
     }
 
     public static function loadFromXml(\SimpleXMLElement $element): ?\Data\Type {
@@ -116,6 +131,12 @@ class Type {
         if (isset($element->attributes()->base))
             $type->base = (string)$element->attributes()->base;
         else $type->base = null;
+        if (isset($element->attributes()->fullQuery))
+            $type->fullQuery = filter_var(
+                (string)$element->attributes()->fullQuery,
+                FILTER_VALIDATE_BOOLEAN
+            );
+        else $type->fullQuery = false;
 
         return $type;
     }
@@ -129,7 +150,8 @@ class Type {
             $this->base === null
                 ? Token::text('AUTO_INCREMENT ')
                 : Token::text(''),
-            Token::text('PRIMARY KEY'),
+            Token::textnl('PRIMARY KEY'),
+            Token::text(', `_type` TEXT NOT NULL'),
             Token::array(array_map(function ($attr) {
                 $res = array();
                 $res []= Token::nl();

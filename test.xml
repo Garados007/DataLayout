@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-01/data-layout.xsd"
+<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-01/data-layout.xsd 
+    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd 
         data-layout.xsd">
     <Environment>
         <EnvVars>
@@ -13,11 +13,12 @@
                 dbPrefix="test_"
                 classNamespace="Test\TestEnvironment"
                 publicMemberAccess="true"
+                maxDbTableNameLength="3"
             />
         </Build>
     </Environment>
     <Types>
-        <Type name="ObjectA">
+        <Type name="ObjectA" fullQuery="true">
             <Attributes>
                 <Attribute name="par1" type="uint" default="0" unique="true" />
                 <Attribute name="par2" type="uint" default="0" unique="true" />

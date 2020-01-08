@@ -1,0 +1,24 @@
+<?php namespace Validation;
+
+require_once __DIR__ . '/../Data/DataDefinition.php';
+
+class FullQuery {
+    public function check(\Data\DataDefinition $data): ?string {
+        $fullQuery = $data->getEnvironment()->getBuild()->isFullQueryAuto()
+            ? null 
+            : $data->getEnvironment()->getBuild()->isFullQueryAll();
+        foreach ($data->getTypes() as $type) {
+            if ($type->getBase() !== null && $type->getFullQuery())
+                return 'type ' . $type->getName() 
+                    . ': only base types can set define full querys';
+            if ($type->getBase() !== null)
+                continue;
+            $fq = $fullQuery ?: $type->getFullQuery();
+            if (!$fq) continue;
+            $bucket = new \Data\TypeBucket($type, $data->getTypes());
+            foreach ($bucket->getTypes() as $t)
+                $t->setBucket($bucket);
+        }
+        return null;
+    }
+}

@@ -152,8 +152,6 @@ This is a list of possible extensions that I plan to maybe implement:
     - this members are limited on the current entry scope (no linking, ...)
     - this members are ideal for: sorting, comparing, computing
 - add math operator to bounds (+, -, *, /)
-- auto highest type of the chain:
-    - if a record is loaded and a child type of it exists it should automaticly load this type
 
 ## community support
 

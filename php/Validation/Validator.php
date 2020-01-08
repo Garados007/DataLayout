@@ -6,6 +6,7 @@ require_once __DIR__ . '/LinkReference.php';
 require_once __DIR__ . '/QueryReference.php';
 require_once __DIR__ . '/TargetReference.php';
 require_once __DIR__ . '/DbTableNames.php';
+require_once __DIR__ . '/FullQuery.php';
 
 class Validator {
     public function check(\Data\DataDefinition $data): ?string {
@@ -29,6 +30,9 @@ class Validator {
         $error = (new DbTableNames())->check($data);
         if ($error !== null)
             return '[DbTableNames] ' . $error;
+        $error = (new FullQuery())->check($data);
+        if ($error !== null)
+            return '[FullQuery] ' . $error;
 
         return null;
     }

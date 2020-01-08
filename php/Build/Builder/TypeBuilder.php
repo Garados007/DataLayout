@@ -33,6 +33,17 @@ class TypeBuilder {
                     Token::text($type->getBase()),
                     Token::textnl('.php\';')
                 ),
+            $type->getBucket() !== null 
+                ? Token::array(array_map(function ($t) use ($type) {
+                    if ($t->getName() == $type->getName() || $t->getName() == $type->getBase())
+                        return Token::text('');
+                    return Token::multi(
+                        Token::text('require_once __DIR__ . \'/'),
+                        Token::text($t->getName()),
+                        Token::textnl('.php\';')
+                    );
+                }, $type->getBucket()->getTypes()))
+                : Token::text(''),
             Token::nl(),
             Token::text('use '),
             Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
@@ -50,7 +61,10 @@ class TypeBuilder {
                 ),
             Token::textnlpush(' {'),
             $type->getBase() === null
-                ? Token::textnl('protected $id;')
+                ? Token::multi(
+                    Token::textnl('protected $id;'),
+                    Token::textnl('protected $_type;'),
+                )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($config, $data, $type) {
                 return Token::multi(
@@ -79,7 +93,11 @@ class TypeBuilder {
                     Token::textnlpush('public function getId(): ?int {'),
                     Token::textnlpop('return $this->id;'),
                     Token::textnl('}'),
-                    Token::nl()
+                    Token::nl(),
+                    Token::textnlpush('public function get_Type(): string {'),
+                    Token::textnlpop('return $this->_type;'),
+                    Token::textnl('}'),
+                    Token::nl(),
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) {
@@ -171,6 +189,9 @@ class TypeBuilder {
                 $type->getBase() === null 
                     ? Token::textnl('$this->id = null;')
                     : Token::textnl('parent::__construct();'),
+                Token::text('$this->_type = \''),
+                Token::text(addslashes($type->getName())),
+                Token::textnl('\';'),
                 Token::array(array_map(function ($attr) use ($config, $data, $type) {
                     $default = $attr->getDefault();
                     $res = array();
@@ -231,27 +252,56 @@ class TypeBuilder {
                 Token::textnl('}'),
                 Token::textnlpush('$result = \\DB::getResult(""'),
                 Token::frame(Token::multi(
-                    Token::text('SELECT id'),
-                    Token::array(array_map(function ($name) {
-                        return Token::multi(
-                            Token::text(', `'),
-                            Token::text($name),
-                            Token::text('`')
-                        );
-                    }, $this->getFlatVariableNames($data, $type))),
+                    Token::text('SELECT id, `_type`'),
+                    $type->getBucket() === null
+                        ? Token::array(array_map(function ($name) {
+                            return Token::multi(
+                                Token::text(', `'),
+                                Token::text($name),
+                                Token::text('`')
+                            );
+                        }, $this->getFlatVariableNames($data, $type)))
+                        : Token::multi(
+                            Token::push(),
+                            Token::array(array_map(function ($par) use ($data) {
+                                return Token::multi(
+                                    Token::textnl(','),
+                                    Token::text('`'),
+                                    Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                    Token::text($par->dbtype),
+                                    Token::text('`.`'),
+                                    Token::text($par->source),
+                                    Token::text('` AS "'),
+                                    Token::text($par->name),
+                                    Token::text('"')
+                                );
+                            }, $type->getBucket()->getParams())),
+                            Token::pop(),
+                        ),
                     Token::nl(),
                     Token::text('FROM `'),
                     Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                     Token::text($type->getDbName()),
                     Token::textnl('`'),
-                    Token::array(array_map(function ($name) use ($data) {
-                        return Token::multi(
-                            Token::text('JOIN `'),
-                            Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                            Token::text($name),
-                            Token::textnl('` USING (id)'),
-                        );
-                    }, $this->getParentTypes($data, $type))),
+                    $type->getBucket() === null
+                        ? Token::array(array_map(function ($name) use ($data) {
+                            return Token::multi(
+                                Token::text('JOIN `'),
+                                Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                Token::text($name),
+                                Token::textnl('` USING (id)'),
+                            );
+                        }, $this->getParentTypes($data, $type)))
+                        : Token::array(array_map(function ($t) use ($type, $data) {
+                            if ($type->getName() == $t->getName())
+                                return Token::text('');
+                            return Token::multi(
+                                Token::text('LEFT INNER JOIN `'),
+                                Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                Token::text($t->getDbName()),
+                                Token::textnl('` USING (id)'),
+                            );
+                        }, $type->getBucket()->getTypes())),
                     Token::text('WHERE id=$id;'),
                 ), '. "', '" . PHP_EOL', 'addslashes'),
                 Token::textnlpop('"'),
@@ -266,13 +316,15 @@ class TypeBuilder {
                 $type->getBase() === null 
                     ? Token::multi(
                         Token::textnlpush('return array('),
-                        Token::text('\'id\' => $this->id'),
+                        Token::textnl('\'id\' => $this->id,'),
+                        Token::text('\'_type\' = $this->_type'),
                     )
                     : Token::multi(
                         Token::textnlpush('return array_replace('),
                         Token::textnl('parent::serialize(),'),
                         Token::textnlpush('array('),
-                        Token::text('\'id\' => $this->id')
+                        Token::textnl('\'id\' => $this->id,'),
+                        Token::text('\'_type\' = $this->_type'),
                     ),
                 Token::array(array_map(function ($attr) {
                     $data = Token::multi(
@@ -317,7 +369,10 @@ class TypeBuilder {
                 Token::nl(),
                 Token::textnlpush('protected function deserialize(array $data) {'),
                 $type->getBase() === null
-                    ? Token::textnl('$this->id = $data[\'id\'];')
+                    ? Token::multi(
+                        Token::textnl('$this->id = $data[\'id\'];'),
+                        Token::textnl('$this->_type = $data[\'_type\'];'),
+                    )
                     : Token::textnl('parent::deserialize($data);'),
                 Token::array(array_map(function ($attr) {
                     $data = Token::multi(
@@ -369,59 +424,144 @@ class TypeBuilder {
                 )
                 : Token::text(''),
             //loadFromDbResult
-            Token::multi(
-                Token::text('protected static function loadFromDbResult(\DBResult $result): ?'),
-                Token::text($this->getRootType($data, $type)),
-                Token::textnlpush(' {'),
-                Token::textnl('$data = new self();'),
-                Token::textnl('$entry = $result->getEntry();'),
-                Token::textnlpush('if (!$entry)'),
-                Token::textnlpop('return null;'),
-                Token::textnl('$data->id = (int)$entry[\'id\'];'),
-                Token::array(array_map(function ($attr) {
-                    $entry = Token::multi(
-                        Token::text('$entry[\''),
-                        Token::text(\addslashes($attr->getName())),
-                        Token::text('\']')
-                    );
-                    $original = $entry;
-                    $entry = self::getWrappedTypeFromSql($attr->getType(), $entry);
-                    if ($attr->getOptional())
+            $type->getBucket() === null 
+                ? Token::multi(
+                    Token::text('protected static function loadFromDbResult(\DBResult $result): ?'),
+                    Token::text($this->getRootType($data, $type)),
+                    Token::textnlpush(' {'),
+                    Token::textnl('$data = new self();'),
+                    Token::textnl('$entry = $result->getEntry();'),
+                    Token::textnlpush('if (!$entry)'),
+                    Token::textnlpop('return null;'),
+                    Token::textnl('$data->id = (int)$entry[\'id\'];'),
+                    Token::textnl('$data->_type = $entry[\'_type\'];'),
+                    Token::array(array_map(function ($attr) {
                         $entry = Token::multi(
-                            $original,
-                            Token::text(' === null ? null : '),
-                            $entry
+                            Token::text('$entry[\''),
+                            Token::text(\addslashes($attr->getName())),
+                            Token::text('\']')
                         );
-                    return Token::multi(
-                        Token::text('$data->'),
-                        Token::text($attr->getName()),
-                        Token::text(' = '),
-                        $entry,
-                        Token::textnl(';')
-                    );
-                }, $this->getFlatAttributes($data, $type))),
-                Token::array(array_map(function ($joint) {
-                    return Token::multi(
-                        Token::text('$data->'),
-                        Token::text($joint->getName()),
-                        Token::text(' = '),
-                        $joint->getRequired()
-                            ? Token::text('')
-                            : Token::multi(
-                                Token::text('$entry[\''),
-                                Token::text(\addslashes($joint->getName())),
-                                Token::text('\'] === null ? null : ')
-                            ),
-                        Token::text('(int)$entry[\''),
-                        Token::text(\addslashes($joint->getName())),
-                        Token::textnl('\'];')
-                    );
-                }, $this->getFlatJoints($data, $type))),
-                Token::textnl('self::$buffer[$data->id] = $data->serialize();'),
-                Token::textnlpop('return $data;'),
-                Token::textnl('}'),
-                Token::nl()
-            ),
+                        $original = $entry;
+                        $entry = self::getWrappedTypeFromSql($attr->getType(), $entry);
+                        if ($attr->getOptional())
+                            $entry = Token::multi(
+                                $original,
+                                Token::text(' === null ? null : '),
+                                $entry
+                            );
+                        return Token::multi(
+                            Token::text('$data->'),
+                            Token::text($attr->getName()),
+                            Token::text(' = '),
+                            $entry,
+                            Token::textnl(';')
+                        );
+                    }, $this->getFlatAttributes($data, $type))),
+                    Token::array(array_map(function ($joint) {
+                        return Token::multi(
+                            Token::text('$data->'),
+                            Token::text($joint->getName()),
+                            Token::text(' = '),
+                            $joint->getRequired()
+                                ? Token::text('')
+                                : Token::multi(
+                                    Token::text('$entry[\''),
+                                    Token::text(\addslashes($joint->getName())),
+                                    Token::text('\'] === null ? null : ')
+                                ),
+                            Token::text('(int)$entry[\''),
+                            Token::text(\addslashes($joint->getName())),
+                            Token::textnl('\'];')
+                        );
+                    }, $this->getFlatJoints($data, $type))),
+                    Token::textnl('self::$buffer[$data->id] = $data->serialize();'),
+                    Token::textnlpop('return $data;'),
+                    Token::textnl('}'),
+                    Token::nl()
+                )
+                : Token::multi(
+                    $type->getBase() === null
+                        ? Token::multi(
+                            Token::text('protected static function loadFromDbResult(\DBResult $result): ?'),
+                            Token::text($this->getRootType($data, $type)),
+                            Token::textnlpush(' {'),
+                            Token::textnl('$entry = $result->getEntry();'),
+                            Token::textnlpush('if (!$entry)'),
+                            Token::textnlpop('return null;'),
+                            Token::textnlpush('switch ($entry[\'_type\']) {'),
+                            Token::array(array_map(function ($type) use ($data) {
+                                return Token::multi(
+                                    Token::text('case \''),
+                                    Token::text(addslashes($type->getName())),
+                                    Token::text('\': return '),
+                                    Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
+                                    Token::text('\\Data\\'),
+                                    Token::text($type->getName()),
+                                    Token::textnl('::loadFromArray($entry);'),
+                                );
+                            }, $type->getBucket()->getTypes())),
+                            Token::textnlpop('default: return null;'),
+                            Token::textnlpop('}'),
+                            Token::textnl('}'),
+                            Token::nl(),
+                        )
+                        : Token::text(''),
+                    Token::text('protected static function loadFromArray(array $entry): ?'),
+                    Token::text($this->getRootType($data, $type)),
+                    Token::textnlpush(' {'),
+                    Token::textnl('$data = new self();'),
+                    Token::textnl('$data->id = (int)$entry[\'id\'];'),
+                    Token::textnl('$data->_type = (int)$entry[\'_type\'];'),
+                    Token::array(array_map(function ($attr) use ($data, $type) {
+                        $defType = $this->findAttributeType($data, $type->getName(), $attr->getName());
+                        if ($defType === null) return Token::text('');
+                        $bucketEntry = $type->getBucket()->getFromAttribute($defType, $attr->getName());
+                        $entry = Token::multi(
+                            Token::text('$entry[\''),
+                            Token::text(\addslashes($bucketEntry->name)),
+                            Token::text('\']')
+                        );
+                        $original = $entry;
+                        $entry = self::getWrappedTypeFromSql($attr->getType(), $entry);
+                        if ($attr->getOptional())
+                            $entry = Token::multi(
+                                $original,
+                                Token::text(' === null ? null : '),
+                                $entry
+                            );
+                        return Token::multi(
+                            Token::text('$data->'),
+                            Token::text($attr->getName()),
+                            Token::text(' = '),
+                            $entry,
+                            Token::textnl(';')
+                        );
+                    }, $this->getFlatAttributes($data, $type))),
+                    Token::array(array_map(function ($joint) use ($data, $type) {
+                        $defType = $this->findJointType($data, $type->getName(), $joint->getName());
+                        if ($defType === null) return Token::text('');
+                        $bucketEntry = $type->getBucket()->getFromJoint($defType, $joint->getName());
+                        return Token::multi(
+                            Token::text('$data->'),
+                            Token::text($joint->getName()),
+                            Token::text(' = '),
+                            $joint->getRequired()
+                                ? Token::text('')
+                                : Token::multi(
+                                    Token::text('$entry[\''),
+                                    Token::text(\addslashes($bucketEntry->name)),
+                                    Token::text('\'] === null ? null : ')
+                                ),
+                            Token::text('(int)$entry[\''),
+                            Token::text(\addslashes($bucketEntry->name)),
+                            Token::textnl('\'];')
+                        );
+                    }, $this->getFlatJoints($data, $type))),
+                    Token::textnl('self::$buffer[$data->id] = $data->serialize();'),
+                    Token::textnlpop('return $data;'),
+                    Token::textnl('}'),
+                    Token::nl()
+                ),
             //save
             Token::multi(
                 Token::textnlpush('public function save() {'),
@@ -436,6 +576,7 @@ class TypeBuilder {
                 Token::textnlpush('if ($this->id === null) {'),
                 Token::multi(
                     Token::textnl('//add to db'),
+                    Token::textnl('$__type = \'\\\'\' . DB::escape($this->_type) . \'\\\'\';'),
                     Token::array(array_map(function ($attr) {
                         $res = array();
                         $res []= Token::text('$_');
@@ -525,41 +666,41 @@ class TypeBuilder {
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                 Token::text($type->getDbName()),
                                 Token::textnlpush('`'),
-                                Token::text('('),
-                                Token::array(self::intersperce(array_merge(
+                                Token::text('(`_type`'),
+                                Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
-                                            Token::text('`'),
+                                            Token::text(', `'),
                                             Token::text($attr->getName()),
                                             Token::text('`')
                                         );
                                     }, $type->getAttributes()),
                                     array_map(function ($joint) {
                                         return Token::multi(
-                                            Token::text('`'),
+                                            Token::text(', `'),
                                             Token::text($joint->getName()),
                                             Token::text('`')
                                         );
                                     }, $type->getJoints())
-                                ), Token::text(', '))),
+                                )),
                                 Token::textnlpop(')'),
-                                Token::text('VALUES ('),
-                                Token::array(self::intersperce(array_merge(
+                                Token::text('VALUES (${__type}'),
+                                Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
-                                            Token::text('${_'),
+                                            Token::text(', ${_'),
                                             Token::text($attr->getName()),
                                             Token::text('}')
                                         );
                                     }, $type->getAttributes()),
                                     array_map(function ($joint) {
                                         return Token::multi(
-                                            Token::text('${_'),
+                                            Token::text(', ${_'),
                                             Token::text($joint->getName()),
                                             Token::text('}')
                                         );
                                     }, $type->getJoints())
-                                ), Token::text(', '))),
+                                )),
                                 Token::textnl(');'),
                                 Token::text('SELECT LAST_INSERT_ID() AS "id";')
                             ), '. "', '" . PHP_EOL', 'addslashes'),
@@ -580,7 +721,7 @@ class TypeBuilder {
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                 Token::text($type->getDbName()),
                                 Token::textnlpush('`'),
-                                Token::text('(id'),
+                                Token::text('(id, `_type`'),
                                 Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
@@ -598,7 +739,7 @@ class TypeBuilder {
                                     }, $type->getJoints())
                                 )),
                                 Token::textnlpop(')'),
-                                Token::text('VALUES (${_id}'),
+                                Token::text('VALUES (${_id}, ${__type}'),
                                 Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
@@ -646,23 +787,23 @@ class TypeBuilder {
                     Token::textnl('` SET \';'),
                     Token::textnl('$first = true;'),
                     Token::textnlpush('foreach ($diff as $key => $value) {'),
-                    Token::text('if (!in_array($key, ['),
-                    Token::array(self::intersperce(array_merge(
+                    Token::text('if (!in_array($key, [\'_type\''),
+                    Token::array(array_merge(
                         array_map(function ($attr) {
                             return Token::multi(
-                                Token::text('\''),
+                                Token::text(', \''),
                                 Token::text(addslashes($attr->getName())),
                                 Token::text('\'')
                             );
                         }, $type->getAttributes()),
                         array_map(function ($joint) {
                             return Token::multi(
-                                Token::text('\''),
+                                Token::text(', \''),
                                 Token::text(addslashes($joint->getName())),
                                 Token::text('\'')
                             );
                         }, $type->getJoints())
-                    ), Token::text(', '))),
+                    )),
                     Token::textnlpush(']))'),
                     Token::textnlpop('continue;'),
                     Token::textnl('if ($first) $first = false;'),
@@ -821,27 +962,56 @@ class TypeBuilder {
                             Token::textnl(';'),
                             Token::textnlpush('$_result = \\DB::getResult(""'),
                             Token::frame(Token::multi(
-                                Token::text('SELECT id'),
-                                Token::array(array_map(function ($name) {
-                                    return Token::multi(
-                                        Token::text(', `'),
-                                        Token::text($name),
-                                        Token::text('`')
-                                    );
-                                }, $this->getFlatVariableNames($data, $type))),
+                                Token::text('SELECT id, `_type`'),
+                                $type->getBucket() === null
+                                    ? Token::array(array_map(function ($name) {
+                                        return Token::multi(
+                                            Token::text(', `'),
+                                            Token::text($name),
+                                            Token::text('`')
+                                        );
+                                    }, $this->getFlatVariableNames($data, $type)))
+                                    : Token::multi(
+                                        Token::push(),
+                                        Token::array(array_map(function ($par) use ($data) {
+                                            return Token::multi(
+                                                Token::textnl(','),
+                                                Token::text('`'),
+                                                Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                                Token::text($par->dbtype),
+                                                Token::text('`.`'),
+                                                Token::text($par->source),
+                                                Token::text('` AS "'),
+                                                Token::text($par->name),
+                                                Token::text('"')
+                                            );
+                                        }, $type->getBucket()->getParams())),
+                                        Token::pop(),
+                                    ),
                                 Token::nl(),
                                 Token::text('FROM `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                 Token::text($type->getDbName()),
                                 Token::textnl('`'),
-                                Token::array(array_map(function ($name) use ($data) {
-                                    return Token::multi(
-                                        Token::text('JOIN `'),
-                                        Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
-                                        Token::text($name),
-                                        Token::textnl('` USING (id)'),
-                                    );
-                                }, $this->getParentTypes($data, $type))),
+                                $type->getBucket() === null
+                                    ? Token::array(array_map(function ($name) use ($data) {
+                                        return Token::multi(
+                                            Token::text('JOIN `'),
+                                            Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                            Token::text($name),
+                                            Token::textnl('` USING (id)'),
+                                        );
+                                    }, $this->getParentTypes($data, $type)))
+                                    : Token::array(array_map(function ($t) use ($type, $data) {
+                                        if ($type->getName() == $t->getName())
+                                            return Token::text('');
+                                        return Token::multi(
+                                            Token::text('LEFT INNER JOIN `'),
+                                            Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
+                                            Token::text($t->getDbName()),
+                                            Token::textnl('` USING (id)'),
+                                        );
+                                    }, $type->getBucket()->getTypes())),
                                 Token::text('WHERE '),
                             ), '. "', '" . PHP_EOL', 'addslashes'),
                             $bound,
@@ -1458,5 +1628,29 @@ class TypeBuilder {
         foreach ($type->getJoints() as $joint)
             $result []= $joint;
         return $result;
+    }
+
+    private function findAttributeType(DataDef $data, string $startType, string $attr): ?string {
+        $result = $startType;
+        while ($result !== null) {
+            $type = $data->getType($result);
+            if ($type === null) return null;
+            if ($type->getAttribute($attr) !== null)
+                return $result;
+            $result = $type->getBase();
+        }
+        return null;
+    }
+    
+    private function findJointType(DataDef $data, string $startType, string $joint): ?string {
+        $result = $startType;
+        while ($result !== null) {
+            $type = $data->getType($result);
+            if ($type === null) return null;
+            if ($type->getJoint($joint) !== null)
+                return $result;
+            $result = $type->getBase();
+        }
+        return null;
     }
 }

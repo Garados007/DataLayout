@@ -7,6 +7,7 @@ class Build {
     private $classNamespace;
     private $publicMemberAccess;
     private $maxDbTableNameLength;
+    private $fullQuery;
 
     private function __construct() {}
 
@@ -34,6 +35,22 @@ class Build {
         return $this->maxDbTableNameLength;
     }
 
+    public function getFullQuery(): string {
+        return $this->fullQuery;
+    }
+
+    public function isFullQueryNone(): bool {
+        return $this->fullQuery == 'none';
+    }
+
+    public function isFullQueryAuto(): bool {
+        return $this->fullQuery == 'auto';
+    }
+
+    public function isFullQueryAll(): bool {
+        return $this->fullQuery == 'all';
+    }
+
     public static function empty(): Build {
         $build = new Build();
         $build->supported = true;
@@ -42,6 +59,7 @@ class Build {
         $build->classNamespace = '';
         $build->publicMemberAccess = false;
         $build->maxDbTableNameLength = 0;
+        $build->fullQuery = 'auto';
         return $build;
     }
 
@@ -69,6 +87,8 @@ class Build {
                 );
             if (isset($element->PHP->attributes()->maxDbTableNameLength))
                 $build->maxDbTableNameLength = (int)$element->PHP->attributes()->maxDbTableNameLength;
+            if (isset($element->PHP->attributes()->fullQuery))
+                $build->fullQuery = (string)$element->PHP->attributes()->fullQuery;
 
             if ($build->classNamespace !== '')
                 $build->classNamespace = '\\' . $build->classNamespace;

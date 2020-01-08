@@ -6,7 +6,7 @@ class Token {
     private $newline;
     private $frame;
     
-    private function __constructor() {
+    private function __construct() {
         $this->content = null;
         $this->indent = 0;
         $this->newline = false;
