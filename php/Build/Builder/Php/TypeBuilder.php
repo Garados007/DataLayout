@@ -317,14 +317,14 @@ class TypeBuilder {
                     ? Token::multi(
                         Token::textnlpush('return array('),
                         Token::textnl('\'id\' => $this->id,'),
-                        Token::text('\'_type\' = $this->_type'),
+                        Token::text('\'_type\' => $this->_type'),
                     )
                     : Token::multi(
                         Token::textnlpush('return array_replace('),
                         Token::textnl('parent::serialize(),'),
                         Token::textnlpush('array('),
                         Token::textnl('\'id\' => $this->id,'),
-                        Token::text('\'_type\' = $this->_type'),
+                        Token::text('\'_type\' => $this->_type'),
                     ),
                 Token::array(array_map(function ($attr) {
                     $data = Token::multi(

@@ -156,7 +156,7 @@
                                         </xs:restriction>
                                     </xs:simpleType>
                                 </xs:attribute>
-                                <xs:attribute name="pagination">
+                                <xs:attribute name="pagination" default="exceptQuery">
                                     <xs:annotation>
                                         <xs:documentation>
                                             This will create a complete pagination for an array output.

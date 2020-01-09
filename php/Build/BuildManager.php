@@ -17,6 +17,9 @@ abstract class BuildManager {
             case 'php':
                 require_once __DIR__ . '/Builder/Php/BuildManager.php';
                 return new \Build\Builder\Php\BuildManager($config);
+            case 'php-graphql':
+                require_once __DIR__ . '/Builder/PhpGraphQL/BuildManager.php';
+                return new \Build\Builder\PhpGraphQL\BuildManager($config);
             default:
                 return null;
         }
@@ -214,6 +217,9 @@ abstract class BuildManager {
 
     protected function output(Token $token, string $path) {
         $text = $token->build();
+        $dir = dirname($path);
+        if (!\is_dir($dir))
+            mkdir($dir);
         \file_put_contents($path, $text);
     }
 

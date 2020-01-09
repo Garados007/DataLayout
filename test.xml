@@ -15,6 +15,12 @@
                 publicMemberAccess="true"
                 maxDbTableNameLength="3"
             />
+            <PHP-GraphQL 
+                supported="true"
+                separateMutation="true"
+                pagination="full"
+                standalone="true"
+            />
         </Build>
     </Environment>
     <Types>

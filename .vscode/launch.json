@@ -26,6 +26,8 @@
             "cwd": "${workspaceFolder}/php",
             "port": 9000,
             "args": [
+                "-b",
+                "php-graphql",
                 "-f",
                 "..\\test.xml",
                 "-o",

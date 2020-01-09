@@ -29,6 +29,8 @@ class Build {
         switch (self::$buildMode) {
             case 'php':
                 return PhpBuild::loadFromXml($element);
+            case 'php-graphql':
+                return PHPGraphqlBuild::loadFromXml($element);
             default:
                 throw new \Exception('build mode ' . self::$buildMode . ' is not supported');
         }
@@ -121,6 +123,101 @@ class PhpBuild extends Build {
             if ($build->classNamespace !== '')
                 $build->classNamespace = '\\' . $build->classNamespace;
         }
+        return $build;
+    }
+}
+
+class PhpGraphqlBuild extends Build {
+    private $classPrefix;
+    private $standalone;
+    private $internalPermissionChecks;
+    private $classLoaderType;
+    private $pagination;
+    private $separateMutation;
+
+    public function getClassPrefix(): string {
+        return $this->classPrefix;
+    }
+
+    public function getStandalone(): bool {
+        return $this->standalone;
+    }
+
+    public function getInternalPermissionChecks(): bool {
+        return $this->internalPermissionChecks;
+    }
+
+    public function getClassLoaderType(): ?string {
+        return $this->classLoaderType == '' ? null : $this->classLoaderType;
+    }
+
+    public function getPagination(): string {
+        return $this->pagination;
+    }
+
+    public function isPaginationNone(): bool {
+        return $this->pagination == 'none';
+    }
+
+    public function isPaginationTypes(): bool {
+        return $this->pagination == 'types';
+    }
+
+    public function isPaginationExceptQuery(): bool {
+        return $this->pagination == 'exceptQuery';
+    }
+
+    public function isPaginationFull(): bool {
+        return $this->pagination == 'full';
+    }
+
+    public function getSeparateMutation(): bool {
+        return $this->separateMutation;
+    }
+
+    public static function empty(): Build {
+        $build = new PhpGraphqlBuild();
+        $build->supported = true;
+        $build->classPrefix = '';
+        $build->standalone = false;
+        $build->internalPermissionChecks = true;
+        $build->classLoaderType = '';
+        $build->pagination = 'exceptQuery';
+        $build->separateMutation = true;
+        return $build;
+    }
+
+    public static function loadFromXml(\SimpleXMLElement $element): ?Build {
+        if ($element->getName() != "Build")
+            return null;
+
+        $build = self::empty();
+        if (!isset($element->{'PHP-GraphQL'}))
+            return $build;
+        $attr = $element->{'PHP-GraphQL'}->attributes();
+        
+        if (isset($attr->classPrefix))
+            $build->classPrefix = (string)$attr->classPrefix;
+        if (isset($attr->standalone))
+            $build->standalone = \filter_var(
+                (string)$attr->standalone,
+                FILTER_VALIDATE_BOOLEAN
+            );
+        if (isset($attr->internalPermissionChecks))
+            $build->internalPermissionChecks = \filter_var(
+                (string)$attr->internalPermissionChecks,
+                FILTER_VALIDATE_BOOLEAN
+            );
+        if (isset($attr->classLoaderType))
+            $build->classLoaderType = (string)$attr->classLoaderType;
+        if (isset($attr->pagination))
+            $build->pagination = (string)$attr->pagination;
+        if (isset($attr->separateMutation))
+            $build->separateMutation = \filter_var(
+                (string)$attr->separateMutation,
+                FILTER_VALIDATE_BOOLEAN
+            );
+
         return $build;
     }
 }

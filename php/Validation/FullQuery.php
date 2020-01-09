@@ -4,9 +4,14 @@ require_once __DIR__ . '/../Data/DataDefinition.php';
 
 class FullQuery {
     public function check(\Data\DataDefinition $data): ?string {
-        $fullQuery = $data->getEnvironment()->getBuild()->isFullQueryAuto()
-            ? null 
-            : $data->getEnvironment()->getBuild()->isFullQueryAll();
+        switch (true) {
+            case $data->getEnvironment()->getBuild() instanceof \Data\PhpBuild:
+                $fullQuery = $data->getEnvironment()->getBuild()->isFullQueryAuto()
+                    ? null 
+                    : $data->getEnvironment()->getBuild()->isFullQueryAll();
+                break;
+            default: return null;
+        }
         foreach ($data->getTypes() as $type) {
             if ($type->getBase() !== null && $type->getFullQuery())
                 return 'type ' . $type->getName() 

@@ -5,7 +5,13 @@ require_once __DIR__ . '/../Data/DataDefinition.php';
 class DbTableNames {
 
     public function check(\Data\DataDefinition $data): ?string {
-        $maxSize = $data->getEnvironment()->getBuild()->getMaxDbTableNameLength();
+        $maxSize = null;
+        switch (true) {
+            case $data->getEnvironment()->getBuild() instanceof \Data\PhpBuild:
+                $maxSize = $data->getEnvironment()->getBuild()->getMaxDbTableNameLength();
+                break;
+            default: return null;
+        }
         if ($maxSize <= 0) return null;
         //create buckets
         $buckets = array();
