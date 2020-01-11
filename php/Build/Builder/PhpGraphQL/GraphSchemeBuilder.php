@@ -157,7 +157,7 @@ class GraphSchemeBuilder {
                 Token::text('The Pagination info that contains information abaut '),
                 Token::textnlpop('current requested page.'),
                 Token::textnl('"""'),
-                Token::text('type PageInfo {'),
+                Token::textnlpush('type PageInfo {'),
                 $this->printSingleDescription('the last returned cursor of this selection'),
                 Token::textnl('endCursor: String'),
                 $this->printSingleDescription('determines if more pages exists'),
@@ -312,7 +312,7 @@ class GraphSchemeBuilder {
             $type->getBase() === null 
                 ? Token::multi(
                     $this->printSingleDescription('deletes this entry'),
-                    Token::textnl('delete: ID!'),
+                    Token::textnl('delete: Boolean!'),
                 )
                 : Token::text(''),
             $this->printSetAttributeDefList($type->getAttributes()),
@@ -493,7 +493,7 @@ class GraphSchemeBuilder {
                         ),
                     );
                 }, $query->getInputObjNames()),
-                $paginate == 'full'
+                $paginate == 'full' && !$query->isLimitFirst()
                     ? array(
                         Token::text('first: Int'),
                         Token::text('after: String')

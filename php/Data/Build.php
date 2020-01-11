@@ -128,12 +128,26 @@ class PhpBuild extends Build {
 }
 
 class PhpGraphqlBuild extends Build {
+    private $dbClassNamespace;
+    private $classNamespace;
     private $classPrefix;
     private $standalone;
     private $internalPermissionChecks;
     private $classLoaderType;
     private $pagination;
     private $separateMutation;
+
+    public function getDbClassNamespace(): ?string {
+        return $this->dbClassNamespace == '' 
+            ? null 
+            : $this->dbClassNamespace;
+    }
+
+    public function getClassNamespace(): ?string {
+        return $this->classNamespace == '' 
+            ? null 
+            : $this->classNamespace;
+    }
 
     public function getClassPrefix(): string {
         return $this->classPrefix;
@@ -196,6 +210,10 @@ class PhpGraphqlBuild extends Build {
             return $build;
         $attr = $element->{'PHP-GraphQL'}->attributes();
         
+        if (isset($attr->dbClassNamespace))
+            $build->dbClassNamespace = (string)$attr->dbClassNamespace;
+        if (isset($attr->classNamespace))
+            $build->classNamespace = (string)$attr->classNamespace;
         if (isset($attr->classPrefix))
             $build->classPrefix = (string)$attr->classPrefix;
         if (isset($attr->standalone))

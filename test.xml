@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd"
+<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd 
+    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd 
         data-layout.xsd">
     <Environment>
         <EnvVars>
@@ -16,8 +16,10 @@
                 maxDbTableNameLength="3"
             />
             <PHP-GraphQL 
+                dbClassNamespace="Test\TestEnvironment"
+                classNamespace="Test\TestQL"
                 supported="true"
-                separateMutation="true"
+                separateMutation="false"
                 pagination="full"
                 standalone="true"
             />
@@ -75,6 +77,17 @@
                         <Compare type="=">
                             <Object name="node" />
                             <Joint name="parent" />
+                        </Compare>
+                    </Bounds>
+                </Query>
+                <Query name="fetchFromPar1" use="search" limit="first">
+                    <Inputs>
+                        <InputVar name="par1" type="uint" />
+                    </Inputs>
+                    <Bounds>
+                        <Compare type="=">
+                            <Target name="par1" />
+                            <Input name="par1" />
                         </Compare>
                     </Bounds>
                 </Query>

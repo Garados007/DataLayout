@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../../BuildManager.php';
 require_once __DIR__ . '/GraphSchemeBuilder.php';
+require_once __DIR__ . '/ResolveAttacher.php';
+require_once __DIR__ . '/PermissionBuilder.php';
 
 use \Build\Token as Token;
 
@@ -9,6 +11,8 @@ class BuildManager extends \Build\BuildManager {
 
     public function build() {
         $this->buildScheme();
+        $this->buildResolver();
+        $this->buildPermission();
     }
 
     protected function buildScheme() {
@@ -17,6 +21,26 @@ class BuildManager extends \Build\BuildManager {
         $this->output(
             $token,
             $this->config->outputRoot . '/GraphQL/db-schema.part.graphql'
+        );
+    }
+
+    protected function buildResolver() {
+        $builder = new \Build\Builder\PhpGraphQL\ResolveAttacher();
+        $token = $builder->buildResolver($this->config, $this->data);
+        $this->output(
+            $token,
+            $this->config->outputRoot . '/GraphQL/type-resolver.php'
+        );
+    }
+
+    protected function buildPermission() {
+        if (!$this->data->getEnvironment()->getBuild()->getInternalPermissionChecks())
+            return;
+        $builder = new \Build\Builder\PhpGraphQL\PermissionBuilder();
+        $token = $builder->buildPermission($this->config, $this->data);
+        $this->output(
+            $token,
+            $this->config->outputRoot . '/GraphQL/permission.php'
         );
     }
 

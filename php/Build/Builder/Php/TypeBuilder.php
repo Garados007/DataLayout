@@ -420,7 +420,7 @@ class TypeBuilder {
                     Token::textnlpop('self::$buffer = array();'),
                     Token::textnlpop('else unset(self::$buffer[$id]);'),
                     Token::textnl('}'),
-                    Token::nl()
+                    Token::nl(),
                 )
                 : Token::text(''),
             //loadFromDbResult
@@ -857,7 +857,7 @@ class TypeBuilder {
                             Token::text('public function from'),
                             Token::text(ucfirst($name)),
                             Token::text(ucfirst($joint->getName())),
-                            Token::textnlpush('(bool $loadCached = true): array {'),
+                            Token::textnlpush('(?int $first = null, ?int $after = null, bool $loadCached = true): array {'),
                             Token::textnl('$id = $this->id;'),
                             Token::textnlpush('$result = \\DB::getResult(""'),
                             Token::frame(Token::multi(
@@ -868,9 +868,12 @@ class TypeBuilder {
                                 Token::textnl('`'),
                                 Token::text('WHERE `'),
                                 Token::text($joint->getName()),
-                                Token::text('`=$id;')
+                                Token::text('`=$id')
                             ), '. "', '" . PHP_EOL', 'addslashes'),
-                            Token::textnlpop('"'),
+                            Token::textnl('"'),
+                            Token::textnl('. ($after === null ? \'\' : " AND id >= $after")'),
+                            Token::textnl('. ($first === null ? \'\' : PHP_EOL . "LIMIT $first")'),
+                            Token::textnlpop('. ";"'),
                             Token::textnl(');'),
                             Token::textnl('$list = array();'),
                             Token::textnlpush('while ($entry = $result->getEntry()) {'),
@@ -1015,10 +1018,17 @@ class TypeBuilder {
                                 Token::text('WHERE '),
                             ), '. "', '" . PHP_EOL', 'addslashes'),
                             $bound,
+                            Token::text('"'),
+                            $query->isLimitFirst()
+                                ? Token::text('')
+                                : Token::multi(
+                                    Token::nl(),
+                                    Token::text('. ($_after === null ? \'\' : " AND id >= $_after")'),
+                                ),
                             count($query->getSortNames()) > 0 
                                 ? Token::multi(
-                                    Token::textnl('" . PHP_EOL'),
-                                    Token::text('. "SORT BY '),
+                                    Token::textnl(' . PHP_EOL'),
+                                    Token::text('. "ORDER BY '),
                                     Token::array(self::intersperce(array_map(function ($name) use ($query) {
                                         return Token::multi(
                                             Token::text('`'),
@@ -1026,36 +1036,37 @@ class TypeBuilder {
                                             Token::text('` '),
                                             Token::text($query->getSortAscend($name) ? 'ASC' : 'DESC')
                                         );
-                                    }, $query->getSortNames()), Token::text(', ')))
+                                    }, $query->getSortNames()), Token::text(', '))),
+                                    Token::text('"'),
                                 )
                                 : Token::text(''),
                             (function () use ($query, $data) {
                                 switch (true) {
                                     case $query->isLimitFirst():
                                         return Token::multi(
-                                            Token::textnl('" . PHP_EOL'),
-                                            Token::text('. "LIMIT 1')
+                                            Token::textnl(' . PHP_EOL'),
+                                            Token::text('. "LIMIT 1"')
                                         );
                                     case $query->isLimitInput():
                                         return Token::multi(
-                                            Token::textnl('" . PHP_EOL'),
-                                            Token::text('. "LIMIT " . $'),
+                                            Token::textnl(' . PHP_EOL'),
+                                            Token::text('. "LIMIT MIN(" . $'),
                                             Token::text($query->getLimitVar()),
-                                            Token::text(' . "')
+                                            Token::text(' . ", " . ($_first ?: PHP_INT_MAX) . ")"')
                                         );
                                     case $query->isLimitEnv():
                                         return Token::multi(
-                                            Token::textnl('" . PHP_EOL'),
-                                            Token::text('. "LIMIT " . '),
+                                            Token::textnl(' . PHP_EOL'),
+                                            Token::text('. "LIMIT MIN(" . '),
                                             Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
                                             Token::text('\\Environment::get'),
                                             Token::text(ucfirst($query->getLimitVar())),
-                                            Token::text('() . "')
+                                            Token::text('() . ", " . ($_first ?: PHP_INT_MAX) . ")"')
                                         );
                                     default: return Token::text('');
                                 }
                             })(),
-                            Token::textnlpop(';"'),
+                            Token::textnlpop(' . ";"'),
                             Token::textnl(');'),
                             $query->isLimitFirst()
                                 ? Token::multi(
@@ -1185,7 +1196,13 @@ class TypeBuilder {
                                 Token::text(' $'),
                                 Token::text($name)
                             );
-                        }, $query->getInputObjNames()),
+                        }, $query->getInputObjNames()), 
+                        $query->isSearchQuery() && !$query->isLimitFirst()
+                            ? array(
+                                Token::text('?int $_first = null'),
+                                Token::text('?int $_after = null'),
+                            )
+                            : array(),
                         $query->getCache()
                             ? array(
                                 Token::text('$_ignoreCache = false')

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-02/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -113,6 +113,30 @@
                         <xs:element name="PHP-GraphQL" minOccurs="0" maxOccurs="1">
                             <xs:complexType>
                                 <xs:attribute name="supported" type="xs:boolean" default="true" />
+                                <xs:attribute name="dbClassNamespace" default="">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The namespace of all db php classes.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\\[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="classNamespace" default="">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The namespace of all helper php classes.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\\[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
                                 <xs:attribute name="classPrefix" default="">
                                     <xs:simpleType>
                                         <xs:restriction base="xs:string">
