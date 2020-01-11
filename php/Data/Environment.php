@@ -1,8 +1,5 @@
 <?php namespace Data;
 
-require_once __DIR__ . '/Attribute.php';
-require_once __DIR__ . '/Build.php';
-
 class Environment {
     private $envVars;
     private $build;

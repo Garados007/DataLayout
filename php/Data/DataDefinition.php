@@ -1,9 +1,5 @@
 <?php namespace Data;
 
-require_once __DIR__ . '/Environment.php';
-require_once __DIR__ . '/Extension.php';
-require_once __DIR__ . '/Type.php';
-
 class DataDefinition {
     private $environment;
     private $extensions;

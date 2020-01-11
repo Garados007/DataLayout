@@ -1,11 +1,5 @@
 <?php namespace Build;
 
-require_once __DIR__ . '/BuildConfig.php';
-require_once __DIR__ . '/Token.php';
-require_once __DIR__ . '/../Data/DataDefinition.php';
-require_once __DIR__ . '/../Validation/Validator.php';
-require_once __DIR__ . '/../Data/Build.php';
-
 use \Build\Token as Token;
 
 abstract class BuildManager {
@@ -15,10 +9,8 @@ abstract class BuildManager {
     public static function load(\Build\BuildConfig $config): ?BuildManager {
         switch ($config->buildMode) {
             case 'php':
-                require_once __DIR__ . '/Builder/Php/BuildManager.php';
                 return new \Build\Builder\Php\BuildManager($config);
             case 'php-graphql':
-                require_once __DIR__ . '/Builder/PhpGraphQL/BuildManager.php';
                 return new \Build\Builder\PhpGraphQL\BuildManager($config);
             default:
                 return null;
@@ -156,7 +148,7 @@ abstract class BuildManager {
             }
             $ignoreExtensions []= $path;
             //load extension
-            $client = new BuildManager($this->config);
+            $client = new static($this->config);
             $client->preInit(
                 $path,
                 $ignoreExtensions

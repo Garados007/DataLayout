@@ -1,10 +1,5 @@
 <?php namespace Build\Builder\Php;
 
-require_once __DIR__ . '/../../BuildManager.php';
-require_once __DIR__ . '/EnvBuilder.php';
-require_once __DIR__ . '/Setup.php';
-require_once __DIR__ . '/TypeBuilder.php';
-
 use \Build\Token as Token;
 
 class BuildManager extends \Build\BuildManager {

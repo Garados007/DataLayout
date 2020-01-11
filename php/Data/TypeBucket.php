@@ -1,7 +1,5 @@
 <?php namespace Data;
 
-require_once __DIR__ . '/Type.php';
-
 class TypeBucket {
     private $types;
     private $param;

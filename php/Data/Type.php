@@ -1,13 +1,5 @@
 <?php namespace Data;
 
-require_once __DIR__ . '/Attribute.php';
-require_once __DIR__ . '/Link.php';
-require_once __DIR__ . '/Joint.php';
-require_once __DIR__ . '/Query.php';
-require_once __DIR__ . '/TypeBucket.php';
-require_once __DIR__ . '/DataDefinition.php';
-require_once __DIR__ . '/../Build/Token.php';
-
 use \Build\Token as Token;
 
 class Type {

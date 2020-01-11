@@ -1,9 +1,5 @@
 <?php namespace Build\Builder\PhpGraphQL;
 
-require_once __DIR__ . '/../../../Data/DataDefinition.php';
-require_once __DIR__ . '/../../BuildConfig.php';
-require_once __DIR__ . '/../../Token.php';
-
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;
 use \Data\DataDefinition as DataDef;
@@ -22,15 +18,19 @@ class PermissionBuilder {
                     Token::textnl(';')
                 ),
             Token::nl(),
-            Token::textnlpush('abstract class Permission {'),
+            Token::text('abstract class Permission {'),
+            Token::push(),
             Token::array(array_map(function ($type) use ($config, $data, $ns) {
                 return Token::multi(
-                    Token::text('abstract public function check'),
+                    Token::nl(),
+                    Token::text('public function check'),
                     Token::text(\ucfirst($type->getName())),
                     Token::text('('),
                     Token::text($ns),
                     Token::text($type->getName()),
-                    Token::textnl(' $value): bool;')
+                    Token::textnlpush(' $value): bool {'),
+                    Token::textnlpop('return true;'),
+                    Token::textnl('}'),
                 );
             }, $data->getTypes())),
             Token::pop(),

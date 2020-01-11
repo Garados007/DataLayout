@@ -54,6 +54,8 @@
             "cwd": "${workspaceFolder}/php",
             "port": 9000,
             "args": [
+                "-b",
+                "php-graphql",
                 "-f",
                 "S:\\Exchange\\htdocs\\werwolf\\doc\\version-1.0\\db\\db-schema.xml",
                 "-o",

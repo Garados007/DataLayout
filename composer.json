@@ -1,0 +1,25 @@
+{
+    "version": "1.0.0",
+    "name": "garados007/data-layout",
+    "authors": [
+        {
+            "name": "Max Brauer",
+            "role": "owner"
+        }
+    ],
+    "description": "experimental project to simply build data access code ",
+    "require": {
+        "php": "^7.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Build\\": "php/Build/",
+            "Data\\": "php/Data/",
+            "Validation\\": "php/Validation/",
+            "": "php/"
+        },
+        "files": [
+            "php/Data/Bounds.php"
+        ]
+    }
+}

@@ -1,7 +1,5 @@
 <?php namespace Data;
 
-require_once __DIR__ . '/Bounds.php';
-
 class Query {
     private $inputVars;
     private $inputObj;

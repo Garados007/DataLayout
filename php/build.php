@@ -1,8 +1,6 @@
 <?php
 
-require_once __DIR__ . '/Build/BuildManager.php';
-require_once __DIR__ . '/Build/BuildConfig.php';
-require_once __DIR__ . '/Data/Environment.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 (function ()  {
     $start = microtime(true);

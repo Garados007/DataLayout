@@ -1,7 +1,5 @@
 <?php namespace Validation;
 
-require_once __DIR__ . '/../Data/DataDefinition.php';
-
 class TypeCycleReference {
     private $data;
 

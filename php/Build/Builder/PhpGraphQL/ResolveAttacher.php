@@ -1,9 +1,5 @@
 <?php namespace Build\Builder\PhpGraphQL;
 
-require_once __DIR__ . '/../../../Data/DataDefinition.php';
-require_once __DIR__ . '/../../BuildConfig.php';
-require_once __DIR__ . '/../../Token.php';
-
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;
 use \Data\DataDefinition as DataDef;
@@ -370,7 +366,7 @@ class ResolveAttacher {
             Token::array(array_map(function ($attr) use ($data, $type) {
                 return Token::multi(
                     Token::text('$config[\'fields\'][\''),
-                    Token::text(\addslashes($attr->getName())),
+                    Token::text(\lcfirst(\addslashes($attr->getName()))),
                     Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                     Token::text('return '),
                     $this->buildOutputConverter(
@@ -389,7 +385,7 @@ class ResolveAttacher {
             Token::array(array_map(function ($joint) use ($data, $type) {
                 return Token::multi(
                     Token::text('$config[\'fields\'][\''),
-                    Token::text(\addslashes($joint->getName())),
+                    Token::text(\lcfirst(\addslashes($joint->getName()))),
                     Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                     Token::text('return self::verify($value->get'),
                     Token::text(\ucfirst($joint->getName())),
@@ -540,7 +536,7 @@ class ResolveAttacher {
                     );
                 return Token::multi(
                     Token::text('$config[\'fields\'][\''),
-                    Token::text(\addslashes($joint->getName())),
+                    Token::text(\lcfirst(\addslashes($joint->getName()))),
                     Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                     Token::text('$value->set'),
                     Token::text(\ucfirst($joint->getName())),
@@ -597,7 +593,7 @@ class ResolveAttacher {
                 if ($query->isLimitFirst())
                     return Token::multi(
                         Token::text('$config[\'fields\'][\''),
-                        Token::text($query->getName()),
+                        Token::text(\lcfirst($query->getName())),
                         Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                         Token::text('return self::verify('),
                         Token::text($ns),
@@ -611,7 +607,7 @@ class ResolveAttacher {
                     );
                 return Token::multi(
                     Token::text('$config[\'fields\'][\''),
-                    Token::text($query->getName()),
+                    Token::text(\lcfirst($query->getName())),
                     Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                     $data->getEnvironment()->getBuild()->getPagination() == 'full'
                         ? Token::multi(
@@ -669,7 +665,7 @@ class ResolveAttacher {
                     return Token::text('');
                 return Token::multi(
                     Token::text('$config[\'fields\'][\''),
-                    Token::text($query->getName()),
+                    Token::text(\lcfirst($query->getName())),
                     Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
                     Token::multi(
                         Token::text($ns),

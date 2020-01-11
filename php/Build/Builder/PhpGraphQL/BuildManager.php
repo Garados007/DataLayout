@@ -1,10 +1,5 @@
 <?php namespace Build\Builder\PhpGraphQL;
 
-require_once __DIR__ . '/../../BuildManager.php';
-require_once __DIR__ . '/GraphSchemeBuilder.php';
-require_once __DIR__ . '/ResolveAttacher.php';
-require_once __DIR__ . '/PermissionBuilder.php';
-
 use \Build\Token as Token;
 
 class BuildManager extends \Build\BuildManager {

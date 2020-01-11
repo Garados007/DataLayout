@@ -1,7 +1,5 @@
 <?php namespace Validation;
 
-require_once __DIR__ . '/../Data/DataDefinition.php';
-
 class QueryReference {
 
     public function check(\Data\DataDefinition $data): ?string {
