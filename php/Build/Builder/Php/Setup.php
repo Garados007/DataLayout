@@ -19,16 +19,6 @@ class Setup {
             Token::text(substr($build->getClassNamespace(), 1)),
             Token::textnl('\\Setup;'),
             Token::nl(),
-            Token::text('require_once '),
-            $config->useRelativePaths 
-                ? Token::text('__DIR__ . \'/')
-                : Token::text('\''),
-            Token::text($config->useRelativePaths
-                ? ($config->dbScriptPath)($config->setupOutputDir . '/data-setup.php')
-                : $config->dbScriptPath
-            ),
-            Token::textnl('\';'),
-            Token::nl(),
             Token::textnl('//create tables and add foreign keys'),
             Token::textnlpush('\\DB::getMultiResult( \'\''),
             Token::frame(Token::array(array(

@@ -11,36 +11,6 @@ class TypeBuilder {
             Token::text(substr($data->getEnvironment()->getBuild()->getClassNamespace(), 1)),
             Token::textnl('\Data;'),
             Token::nl(),
-            Token::textnl('//import db management file'),
-            Token::text('require_once '),
-            $config->useRelativePaths 
-                ? Token::text('__DIR__ . \'/')
-                : Token::text('\''),
-            Token::text($config->useRelativePaths
-                ? ($config->dbScriptPath)($config->dbOutputDir . '/Data/' . $type->getName() . '.php')
-                : $config->dbScriptPath
-            ),
-            Token::textnl('\';'),
-            Token::textnl('require_once __DIR__ . \'/../Environment.php\';') ,
-            $type->getBase() === null 
-                ? Token::text('')
-                : Token::multi(
-                    Token::text('require_once __DIR__ . \'/'),
-                    Token::text($type->getBase()),
-                    Token::textnl('.php\';')
-                ),
-            $type->getBucket() !== null 
-                ? Token::array(array_map(function ($t) use ($type) {
-                    if ($t->getName() == $type->getName() || $t->getName() == $type->getBase())
-                        return Token::text('');
-                    return Token::multi(
-                        Token::text('require_once __DIR__ . \'/'),
-                        Token::text($t->getName()),
-                        Token::textnl('.php\';')
-                    );
-                }, $type->getBucket()->getTypes()))
-                : Token::text(''),
-            Token::nl(),
             Token::text('use '),
             Token::text($data->getEnvironment()->getBuild()->getClassNamespace()),
             Token::textnl('\Environment as Env;'),
