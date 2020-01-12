@@ -24,7 +24,7 @@ class BuildManager extends \Build\BuildManager {
         $token = $builder->buildResolver($this->config, $this->data);
         $this->output(
             $token,
-            $this->config->outputRoot . '/GraphQL/type-resolver.php'
+            $this->config->outputRoot . '/GraphQL/TypeResolver.php'
         );
     }
 
@@ -35,7 +35,7 @@ class BuildManager extends \Build\BuildManager {
         $token = $builder->buildPermission($this->config, $this->data);
         $this->output(
             $token,
-            $this->config->outputRoot . '/GraphQL/permission.php'
+            $this->config->outputRoot . '/GraphQL/Permission.php'
         );
     }
 

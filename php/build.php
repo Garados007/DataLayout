@@ -49,10 +49,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
         );
     $config->dbOutputDir = isset($opts['db-output']) 
         ? $opts['db-output'] 
-        : $config->outputRoot . '/db';
+        : $config->outputRoot . '/DB';
     $config->setupOutputDir = isset($opts['setup-output']) 
         ? $opts['setup-output'] 
-        : $config->outputRoot . '/setup';
+        : $config->outputRoot . '/Setup';
     $config->dbScriptPath = isset($opts['db-script'])
         ? $opts['db-script']
         : null;

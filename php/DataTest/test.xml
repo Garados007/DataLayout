@@ -2,7 +2,7 @@
 <DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd 
-        data-layout.xsd">
+        ./../../data-layout.xsd">
     <Environment>
         <EnvVars>
             <Attribute name="userId" type="uint" />
@@ -11,16 +11,16 @@
             <CSharp supported="false" />
             <PHP dbEngine="sql-mabron-db-connector" 
                 dbPrefix="test_"
-                classNamespace="Test\TestEnvironment"
+                classNamespace="Test\Generated\DB"
                 publicMemberAccess="true"
                 maxDbTableNameLength="3"
             />
             <PHP-GraphQL 
-                dbClassNamespace="Test\TestEnvironment"
-                classNamespace="Test\TestQL"
+                dbClassNamespace="Test\Generated\DB"
+                classNamespace="Test\Generated\GraphQL"
                 supported="true"
                 separateMutation="false"
-                pagination="full"
+                pagination="full" 
                 standalone="true"
             />
         </Build>

@@ -5,21 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Listen for XDebug",
-            "type": "php",
-            "request": "launch",
-            "port": 9000
-        },
-        {
-            "name": "Launch currently open script",
-            "type": "php",
-            "request": "launch",
-            "program": "${file}",
-            "cwd": "${fileDirname}",
-            "port": 9000
-        },
-        {
-            "name": "Test Build",
+            "name": "Build GraphQL",
             "type": "php",
             "request": "launch",
             "program": "${workspaceFolder}/php/build.php",
@@ -29,22 +15,34 @@
                 "-b",
                 "php-graphql",
                 "-f",
-                "..\\test.xml",
+                "DataTest\\test.xml",
                 "-o",
-                "test2",
+                "test",
                 "--db-script",
                 "../lib/script/db.php",
                 "-r"
             ]
         },
         {
-            "name": "Full test",
+            "name": "Build PHP",
             "type": "php",
             "request": "launch",
-            "program": "${workspaceFolder}/php/test/test.php",
-            "cwd": "${workspaceFolder}/php/test",
+            "program": "${workspaceFolder}/php/build.php",
+            "cwd": "${workspaceFolder}/php",
             "port": 9000,
-            "args": []
+            "args": [
+                "-b",
+                "php",
+                "-f",
+                "DataTest\\test.xml",
+                "-o",
+                "test",
+                "--db-script",
+                "../lib/script/db.php",
+                "--setup-output",
+                "test/DB/Setup",
+                "-r"
+            ]
         },
         {
             "name": "Real Build",
@@ -55,13 +53,23 @@
             "port": 9000,
             "args": [
                 "-b",
-                "php-graphql",
+                "php",
                 "-f",
                 "S:\\Exchange\\htdocs\\werwolf\\doc\\version-1.0\\db\\db-schema.xml",
                 "-o",
                 "test",
                 "--db-script",
                 "../lib/script/db.php"
+            ]
+        },
+        {
+            "name": "Endpoint",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/php/DataTest/endpoint.php",
+            "cwd": "${workspaceFolder}/php/DataTest",
+            "port": 9000,
+            "args": [
             ]
         },
     ]
