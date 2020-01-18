@@ -80,6 +80,20 @@ class ResolveAttacher {
                     Token::textnl('}'),
                     Token::nl()
                 ),
+            Token::multi(
+                Token::textnlpush('private static function cascade(&$target, $handler) {'),
+                Token::textnlpush('if (!isset($target[\'resolveField\']))'),
+                Token::textnlpop('$target[\'resolveField\'] = $handler;'),
+                Token::textnlpush('else {'),
+                Token::textnl('$prev = $target[\'resolveField\'];'),
+                Token::textnlpush('$target[\'resolveField\'] = function ($value, $args, $content, $info) use ($prev, $handler) {'),
+                Token::textnl('$prev($value, $args, $content, $info);'),
+                Token::textnlpop('$handler($value, $args, $content, $info);'),
+                Token::textnlpop('};'),
+                Token::textnlpop('}'),
+                Token::textnl('}'),
+                Token::nl()
+            ),
             Token::textnl('/**'),
             Token::textnl(' * Attach the field resolvers if possible.'),
             Token::textnl(' * The return is null if no resolvers could be attached to this type.'),
@@ -212,7 +226,7 @@ class ResolveAttacher {
             Token::text('private static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_Mutatable' : ''),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
             $mutator 
                 ? Token::multi(
                     Token::text('self::resolve'),
@@ -223,7 +237,7 @@ class ResolveAttacher {
             $mutate 
                 ? $this->buildWriteTypeInstance($data, $type)
                 : Token::text(''),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -234,7 +248,7 @@ class ResolveAttacher {
             Token::text('private static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_Mutator' : '_Type'),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
             Token::array(array_map(function ($type) use ($data, $mutator) {
                 return Token::multi(
                     Token::text('self::resolve'),
@@ -243,7 +257,7 @@ class ResolveAttacher {
                     Token::textnl('($config, $typeNode, $typeMap);'),
                 );
             }, $this->getTypesPath($data, $type))),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -254,7 +268,7 @@ class ResolveAttacher {
             Token::text('private static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_StaticMutator' : '_Static'),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
             $mutator 
                 ? Token::multi(
                     Token::text('self::resolve'),
@@ -265,7 +279,7 @@ class ResolveAttacher {
             $mutate 
                 ? $this->buildWriteTypeStatic($data, $type)
                 : Token::text(''),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -276,14 +290,15 @@ class ResolveAttacher {
             Token::text('private static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text('_Pagination'),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
-            Token::textnlpush('$config[\'fields\'][\'edges\'][\'resolve\'] = function ($value, $args) {'),
-            Token::textnlpop('return $value[\'result\'];'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('$config[\'resolveField\'] = function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
+            Token::textnl('case \'edges\': return $value[\'result\'];'),
+            Token::textnl('case \'pageInfo\': return $value;'),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
             Token::textnl('};'),
-            Token::textnlpush('$config[\'fields\'][\'pageInfo\'][\'resolve\'] = function ($value, $args) {'),
-            Token::textnlpop('return $value;'),
-            Token::textnl('};'),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -294,14 +309,15 @@ class ResolveAttacher {
             Token::text('private static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text('_Edge'),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
-            Token::textnlpush('$config[\'fields\'][\'node\'][\'resolve\'] = function ($value, $args) {'),
-            Token::textnlpop('return $value;'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('$config[\'resolveField\'] = function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
+            Token::textnl('case \'node\': return $value;'),
+            Token::textnl('case \'cursor\': return (string)$value->getId();'),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
             Token::textnl('};'),
-            Token::textnlpush('$config[\'fields\'][\'cursor\'][\'resolve\'] = function ($value, $args) {'),
-            Token::textnlpop('return $value->get_Type() . \',\' . (string)$value->getId();'),
-            Token::textnl('};'),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -310,18 +326,21 @@ class ResolveAttacher {
         return Token::multi(
             Token::nl(),
             Token::text('private static function resolvePageInfo'),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
-            Token::textnlpush('$config[\'fields\'][\'node\'][\'resolve\'] = function ($value, $args) {'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('$config[\'resolveField\'] = function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
+            Token::textnlpush('case \'endCursor\': {'),
             Token::textnl('$key = array_key_last($value[\'result\']);'),
             Token::textnlpush('if ($key === null)'),
             Token::textnlpop('return null;'),
             Token::textnl('$item = $value[\'result\'][$key];'),
-            Token::textnlpop('return $item->get_Type() . \',\' . (string)$item->getId();'),
+            Token::textnlpop('return (string)$item->getId();'),
+            Token::textnl('}'),
+            Token::textnl('case \'hasNextPage\': return $value[\'more\'];'),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
             Token::textnl('};'),
-            Token::textnlpush('$config[\'fields\'][\'hasNextPage\'][\'resolve\'] = function ($value, $args) {'),
-            Token::textnlpop('return $value[\'more\'];'),
-            Token::textnl('};'),
-            Token::pop(),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -333,17 +352,20 @@ class ResolveAttacher {
             $mutate
                 ? Token::text('Mutator')
                 : Token::text(''),
-            Token::textnlpush('(array $config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
+            Token::textnlpush('$config[\'resolveField\'] = function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
             Token::array(array_map(function ($type) use ($data, $mutate) {
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\addslashes(\lcfirst($type->getName()))),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
-                    Token::textnlpop('return true;'),
-                    Token::textnl('};'),
+                    Token::textnl('\': return true;'),
                 );
             }, $data->getTypes())),
-            Token::pop(),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
+            Token::textnl('};'),
+            Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
     }
@@ -351,23 +373,25 @@ class ResolveAttacher {
     private function buildReadonlyTypeInstance(DataDef $data, \Data\Type $type): Token {
         return Token::multi(
             Token::textnl('//readonly instance'),
+            Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
             $type->getBase() === null 
                 ? Token::multi(
-                    Token::textnlpush('$config[\'fields\'][\'id\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('case \'id\': {'),
                     Token::textnlpush('return $value->getId() === null'),
                     Token::textnl('? null'),
                     Token::text(': \''),
                     Token::text(\addslashes($type->getName())),
                     Token::textnlpop(',\' . $value->getId();'),
                     Token::pop(),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($attr->getName()))),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     Token::text('return '),
                     $this->buildOutputConverter(
                         $attr->getType(),
@@ -379,18 +403,18 @@ class ResolveAttacher {
                         $attr->getOptional(),
                     ),
                     Token::textnlpop(';'),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($joint->getName()))),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     Token::text('return self::verify($value->get'),
                     Token::text(\ucfirst($joint->getName())),
                     Token::textnlpop('());'),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
             }, $type->getJoints())),
             (function () use ($data, $type) {
@@ -399,25 +423,25 @@ class ResolveAttacher {
                     foreach ($t->getJoints() as $joint)
                         if ($joint->getTarget() == $type->getName()) 
                             $result []= array(
-                                Token::text('$config[\'fields\'][\'from'),
+                                Token::text('case \'from'),
                                 Token::text(\ucfirst($t->getName())),
                                 Token::text(\ucfirst($joint->getName())),
-                                Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                                Token::textnlpush('\': {'),
                                 \in_array($data->getEnvironment()->getBuild()->getPagination(), ['types', 'exceptQuery', 'full'])
                                     ? Token::multi(
                                         Token::text('$result = $value->from'),
                                         Token::text(\ucfirst($t->getName())),
                                         Token::text(\ucfirst($joint->getName())),
                                         Token::textnlpush('('),
-                                        Token::textnl('$args[\'first\'] === null ? null : $args[\'first\'] + 1,'),
-                                        Token::textnlpop('$args[\'after\'] === null ? null : (int)$args[\'after\']'),
+                                        Token::textnl('isset($args[\'first\']) ? $args[\'first\'] + 1 : null,'),
+                                        Token::textnlpop('isset($args[\'after\']) ? (int)$args[\'after\'] : null'),
                                         Token::textnl(');'),
                                         Token::textnlpush('$result = array_reduce($result, function ($carry, $item) {'),
                                         Token::textnlpush('if (self::verify($item, false) !== null)'),
                                         Token::textnlpop('$carry []= $item;'),
                                         Token::textnlpop('return $carry;'),
                                         Token::textnl('}, array());'),
-                                        Token::text('$more = $args[\'first\'] !== null && '),
+                                        Token::text('$more = isset($args[\'first\']) && '),
                                         Token::textnl('count($result) > $args[\'first\'];'),
                                         Token::textnl('if ($more) array_pop($result);'),
                                         Token::textnlpush('return array('),
@@ -431,8 +455,8 @@ class ResolveAttacher {
                                         Token::text(\ucfirst($t->getName())),
                                         Token::text(\ucfirst($joint->getName())),
                                         Token::textnlpush('('),
-                                        Token::textnl('$args[\'first\'],'),
-                                        Token::textnlpop('$args[\'after\'] === null ? null : (int)$args[\'after\']'),
+                                        Token::textnl('isset($args[\'first\']) ? $args[\'first\'] : null,'),
+                                        Token::textnlpop('isset($args[\'after\']) ? (int)$args[\'after\'] : null'),
                                         Token::textnl('),'),
                                         Token::textnlpush('function ($carry, $item) {'),
                                         Token::textnlpush('if (self::verify($item, false) !== null)'),
@@ -442,40 +466,47 @@ class ResolveAttacher {
                                         Token::textnlpop('array()'),
                                         Token::textnlpop(');'),
                                     ),
-                                Token::textnl('};'),
+                                Token::textnl('}'),
                             );
                 return Token::array($result);
-            })()
+            })(),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
+            Token::textnl('});')
         );
     }
 
     private function buildWriteTypeInstance(DataDef $data, \Data\Type $type): Token {
         return Token::multi(
             Token::textnl('//write instance'),
+            Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
             $type->getBase() === null
                 ? Token::multi(
-                    Token::textnlpush('$config[\'fields\'][\'delete\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('case \'delete\': {'),
                     Token::textnlpush('if ($value->getId() === null)'),
                     Token::textnlpop('return false;'),
                     Token::textnl('else $value->delete();'),
                     Token::textnlpop('return true;'),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\'set'),
+                    Token::text('case \'set'),
                     Token::text(\ucfirst(\addslashes($attr->getName()))),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     Token::text('$value->set'),
                     Token::text(\ucfirst($attr->getName())),
                     Token::text('('),
                     $this->buildInputConverter(
                         $attr->getType(),
                         Token::multi(
-                            Token::text('$args[\''),
+                            Token::text('(isset($args[\''),
                             Token::text(\addslashes($attr->getName())),
-                            Token::text('\']'),
+                            Token::text('\']) ? $args[\''),
+                            Token::text(\addslashes($attr->getName())),
+                            Token::text('\'] : null)'),
                         ),
                         $attr->getOptional(),
                     ),
@@ -507,21 +538,24 @@ class ResolveAttacher {
                         $attr->getOptional(),
                     ),
                     Token::textnlpop(';'),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
                 $value = Token::multi(
-                    Token::text('$args[\''),
+                    Token::text('(isset($args[\''),
                     Token::text(\addslashes($joint->getName())),
-                    Token::text('\']')
+                    Token::text('\']) ? $args[\''),
+                    Token::text(\addslashes($joint->getName())),
+                    Token::text('\'] : null)')
                 );
                 $obj = Token::multi(
-                    Token::text('self::idResolve'),
+                    $value,
+                    Token::text('!== null ? self::idResolve'),
                     Token::text(\ucfirst($joint->getTarget())),
                     Token::text('('),
                     $value,
-                    Token::text(')')
+                    Token::text(') : null')
                 );
                 $null = $joint->getRequired()
                     ? $obj
@@ -535,9 +569,9 @@ class ResolveAttacher {
                         Token::nl(),
                     );
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($joint->getName()))),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     Token::text('$value->set'),
                     Token::text(\ucfirst($joint->getName())),
                     Token::text('('),
@@ -562,20 +596,25 @@ class ResolveAttacher {
                     Token::text('return $value->get'),
                     Token::text(\ucfirst($joint->getName())),
                     Token::textnlpop('();'),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
             }, $type->getJoints())),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
+            Token::textnl('});'),
         );
     }
     
     private function buildReadonlyTypeStatic(DataDef $data, \Data\Type $type): Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
-        $ns = $ns === null ? '' : '\\' . $ns . '\\';
+        $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         return Token::multi(
             Token::textnl('//readonly static'),
+            Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
             $type->getBase() === null 
                 ? Token::multi(
-                    Token::textnlpush('$config[\'fields\'][\'load\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('case \'load\': {'),
                     Token::text('return self::verify('),
                     Token::text($ns),
                     Token::text($type->getName()),
@@ -584,7 +623,7 @@ class ResolveAttacher {
                     Token::text($type->getName()),
                     Token::textnlpop('($args[\'id\'])'),
                     Token::textnlpop('));'),
-                    Token::textnl('};')
+                    Token::textnl('}')
                 )
                 : Token::text(''),
             Token::array(array_map(function ($query) use ($data, $type, $ns) {
@@ -592,9 +631,9 @@ class ResolveAttacher {
                     return Token::text('');
                 if ($query->isLimitFirst())
                     return Token::multi(
-                        Token::text('$config[\'fields\'][\''),
+                        Token::text('case \''),
                         Token::text(\lcfirst($query->getName())),
-                        Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                        Token::textnlpush('\': {'),
                         Token::text('return self::verify('),
                         Token::text($ns),
                         Token::text($type->getName()),
@@ -603,12 +642,12 @@ class ResolveAttacher {
                         Token::text('('),
                         $this->buildQueryArgs($type, $query, false, false),
                         Token::textnlpop('));'),
-                        Token::textnl('};'),
+                        Token::textnl('}'),
                     );
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\lcfirst($query->getName())),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     $data->getEnvironment()->getBuild()->getPagination() == 'full'
                         ? Token::multi(
                             Token::text('$result = '),
@@ -624,7 +663,7 @@ class ResolveAttacher {
                             Token::textnlpop('$carry []= $item;'),
                             Token::textnlpop('return $carry;'),
                             Token::textnl('}, array());'),
-                            Token::textnl('$more = $args[\'first\'] !== null && count($result) > $args[\'first\'];'),
+                            Token::textnl('$more = isset($args[\'first\']) && count($result) > $args[\'first\'];'),
                             Token::textnl('if ($more) array_pop($result);'),
                             Token::textnlpush('return array('),
                             Token::textnl('\'result\' => $result,'),
@@ -649,24 +688,29 @@ class ResolveAttacher {
                             Token::textnl(');'),
                         ),
                     Token::pop(),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
-            }, $type->getAccess()))
+            }, $type->getAccess())),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
+            Token::textnl('});')
         );
     }
 
     private function buildWriteTypeStatic(DataDef $data, \Data\Type $type): Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
-        $ns = $ns === null ? '' : '\\' . $ns . '\\';
+        $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         return Token::multi(
             Token::textnl('//write static'),
+            Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
+            Token::textnlpush('switch($info->fieldName) {'),
             Token::array(array_map(function ($query) use ($data, $type, $ns) {
                 if (!$query->isDeleteQuery())
                     return Token::text('');
                 return Token::multi(
-                    Token::text('$config[\'fields\'][\''),
+                    Token::text('case \''),
                     Token::text(\lcfirst($query->getName())),
-                    Token::textnlpush('\'][\'resolve\'] = function ($value, $args) {'),
+                    Token::textnlpush('\': {'),
                     Token::multi(
                         Token::text($ns),
                         Token::text($type->getName()),
@@ -678,15 +722,18 @@ class ResolveAttacher {
                         Token::textnl('return true;'),
                     ),
                     Token::pop(),
-                    Token::textnl('};'),
+                    Token::textnl('}'),
                 );
-            }, $type->getAccess()))
+            }, $type->getAccess())),
+            Token::textnlpop('default: return null;'),
+            Token::textnlpop('}'),
+            Token::textnl('});')
         );
     }
 
     private function buildIdResolver(DataDef $data, \Data\Type $type) : Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
-        $ns = $ns === null ? '' : '\\' . $ns . '\\';
+        $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         return Token::multi(
             Token::nl(),
             Token::text('private static function idResolve'),
@@ -769,12 +816,12 @@ class ResolveAttacher {
                     $query->isSearchQuery() && !$query->isLimitFirst() && $paginate
                         ? array(
                             $more 
-                                ? Token::text('$args[\'first\'] === null ? null : $args[\'first\'] + 1')
-                                : Token::text('$args[\'first\']'),
+                                ? Token::text('isset($args[\'first\']) ? $args[\'first\'] + 1 : null')
+                                : Token::text('isset($args[\'first\']) ? $args[\'first\'] : null'),
                             Token::multi(
-                                Token::text('self::idResolve'),
+                                Token::text('isset($args[\'after\']) ? self::idResolve'),
                                 Token::text(\ucfirst($type->getName())),
-                                Token::text('($args[\'after\'])->getId()')
+                                Token::text('($args[\'after\'])->getId() : null')
                             )
                         )
                         : array(),
