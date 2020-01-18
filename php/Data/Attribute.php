@@ -1,11 +1,15 @@
 <?php namespace Data;
 
+use \Data\Security;
+
 class Attribute {
     private $name;
     private $type; 
     private $default;
+    private $hasDefault;
     private $unique;
     private $optional;
+    private $security;
 
     private function __construct() {}
 
@@ -21,12 +25,20 @@ class Attribute {
         return $this->default;
     }
 
+    public function hasDefault(): bool {
+        return $this->hasDefault;
+    }
+
     public function getUnique(): bool {
         return $this->unique;
     }
 
     public function getOptional(): bool {
         return $this->optional;
+    }
+
+    public function getSecurity(): Security {
+        return $this->security;
     }
 
     public static function loadFromXml(\SimpleXMLElement $element): ?Attribute {
@@ -40,6 +52,7 @@ class Attribute {
         if (isset($xa['default']))
             $attr->default = (string)$element->attributes()->default;
         else $attr->default = null;
+        $attr->hasDefault = $attr->default !== null;
         if (isset($xa['unique']))
             $attr->unique = filter_var(
                 (string)$element->attributes()->unique,
@@ -102,6 +115,9 @@ class Attribute {
                 break;
             default: return null;
         }
+        $attr->security = isset($element->Security)
+            ? Security::loadFromXml($element->Security)
+            : new Security();
 
         return $attr;
     }

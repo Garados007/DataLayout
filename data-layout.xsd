@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -20,6 +20,7 @@
                         <xs:group ref="Extensions" minOccurs="0" maxOccurs="unbounded" />
                     </xs:complexType>
                 </xs:element>
+                <xs:element name="DefaultTypeSecurity" minOccurs="0" maxOccurs="1" type="TypeSecurity" />
                 <xs:element name="Types" type="Types" minOccurs="0" maxOccurs="1">
                     <xs:unique name="typeName">
                         <xs:selector xpath="Type" />
@@ -210,6 +211,19 @@
                         </xs:element>
                     </xs:sequence>
                     <xs:attribute name="profile" use="optional" type="keyType" default="default" />
+                    <xs:attribute name="security" use="optional" default="include">
+                        <xs:annotation>
+                            <xs:documentation>
+                                This will define the default behaviour of the security nodes.
+                            </xs:documentation>
+                        </xs:annotation>
+                        <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                                <xs:enumeration value="include" />
+                                <xs:enumeration value="exclude" />
+                            </xs:restriction>
+                        </xs:simpleType>
+                    </xs:attribute>
                 </xs:complexType>
             </xs:element>
         </xs:sequence>
@@ -289,10 +303,19 @@
 
     <xs:complexType name="typeDef">
         <xs:sequence>
+            <xs:element name="Security" minOccurs="0" maxOccurs="1" type="TypeSecurity" />
             <xs:element name="Attributes" minOccurs="0" maxOccurs="1">
                 <xs:complexType>
                     <xs:sequence>
-                        <xs:element name="Attribute" type="Attribute" minOccurs="0" maxOccurs="unbounded" />
+                        <xs:element name="Attribute" minOccurs="0" maxOccurs="unbounded">
+                            <xs:complexType>
+                                <xs:complexContent>
+                                    <xs:extension base="Attribute">
+                                        <xs:group ref="SecurityNodeEx" minOccurs="0" maxOccurs="1" />
+                                    </xs:extension>
+                                </xs:complexContent>
+                            </xs:complexType>
+                        </xs:element>
                     </xs:sequence>
                 </xs:complexType>
                 <xs:unique name="typeAttrName">
@@ -319,6 +342,7 @@
                     <xs:sequence>
                         <xs:element name="Joint" minOccurs="0" maxOccurs="unbounded">
                             <xs:complexType>
+                                <xs:group ref="SecurityNodeEx" minOccurs="0" maxOccurs="1" />
                                 <xs:attribute name="name" type="keyType" use="required" />
                                 <xs:attribute name="target" type="keyType" use="required" />
                                 <xs:attribute name="required" type="xs:boolean" use="optional" default="true" />
@@ -352,6 +376,36 @@
                 </xs:documentation>
             </xs:annotation>
         </xs:attribute>
+    </xs:complexType>
+
+    <xs:complexType name="TypeSecurity">
+        <xs:sequence>
+            <xs:element name="Create" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissions" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="Load" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissions" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="Delete" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissions" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="DefaultAttribute" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissionsEx" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+            <xs:element name="DefaultJoint" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissionsEx" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
     </xs:complexType>
 
     <xs:complexType name="Query">
@@ -406,6 +460,8 @@
                     </xs:sequence>
                 </xs:complexType>
             </xs:element>
+
+            <xs:group ref="SecurityNode" minOccurs="0" maxOccurs="1" />
         </xs:sequence>
         <xs:attribute name="name" type="keyType" use="required" />
         <xs:attribute name="use" use="optional">
@@ -562,6 +618,114 @@
                 <xs:element name="IsNull">
                     <xs:complexType>
                         <xs:group ref="boundValueContent" minOccurs="1" maxOccurs="1" />
+                    </xs:complexType>
+                </xs:element>
+            </xs:choice>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="SecurityNode">
+        <xs:sequence>
+            <xs:element name="Security" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissions" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="SecurityNodeEx">
+        <xs:sequence>
+            <xs:element name="Security" maxOccurs="1">
+                <xs:complexType>
+                    <xs:group ref="IncludePermissionsEx" minOccurs="0" maxOccurs="unbounded" />
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="IncludePermissions">
+        <xs:sequence>
+            <xs:choice>
+                <xs:element name="Include">
+                    <xs:complexType>
+                        <xs:attribute name="profile" type="keyType" use="optional" />
+                        <xs:attribute name="build" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="php" />
+                                    <xs:enumeration value="php-graphql" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Exclude">
+                    <xs:complexType>
+                        <xs:attribute name="profile" type="keyType" use="optional" />
+                        <xs:attribute name="build" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="php" />
+                                    <xs:enumeration value="php-graphql" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+            </xs:choice>
+        </xs:sequence>
+    </xs:group>
+
+    <xs:group name="IncludePermissionsEx">
+        <xs:sequence>
+            <xs:choice>
+                <xs:element name="Include">
+                    <xs:complexType>
+                        <xs:attribute name="profile" type="keyType" use="optional" />
+                        <xs:attribute name="build" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="php" />
+                                    <xs:enumeration value="php-graphql" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="access" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="set" />
+                                    <xs:enumeration value="get" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Exclude">
+                    <xs:complexType>
+                        <xs:attribute name="profile" type="keyType" use="optional" />
+                        <xs:attribute name="build" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="php" />
+                                    <xs:enumeration value="php-graphql" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
+                        <xs:attribute name="access" use="optional" default="any">
+                            <xs:simpleType>
+                                <xs:restriction base="xs:string">
+                                    <xs:enumeration value="any" />
+                                    <xs:enumeration value="set" />
+                                    <xs:enumeration value="get" />
+                                </xs:restriction>
+                            </xs:simpleType>
+                        </xs:attribute>
                     </xs:complexType>
                 </xs:element>
             </xs:choice>

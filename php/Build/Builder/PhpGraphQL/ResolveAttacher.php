@@ -388,6 +388,8 @@ class ResolveAttacher {
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
+                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                    return null;
                 return Token::multi(
                     Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($attr->getName()))),
@@ -407,6 +409,8 @@ class ResolveAttacher {
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
+                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                    return null;
                 return Token::multi(
                     Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($joint->getName()))),
@@ -421,7 +425,9 @@ class ResolveAttacher {
                 $result = array();
                 foreach ($data->getTypes() as $t) 
                     foreach ($t->getJoints() as $joint)
-                        if ($joint->getTarget() == $type->getName()) 
+                        if ($joint->getTarget() == $type->getName()) {
+                            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                                continue;
                             $result []= array(
                                 Token::text('case \'from'),
                                 Token::text(\ucfirst($t->getName())),
@@ -468,6 +474,7 @@ class ResolveAttacher {
                                     ),
                                 Token::textnl('}'),
                             );
+                        }
                 return Token::array($result);
             })(),
             Token::textnlpop('default: return null;'),
@@ -481,7 +488,7 @@ class ResolveAttacher {
             Token::textnl('//write instance'),
             Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
             Token::textnlpush('switch($info->fieldName) {'),
-            $type->getBase() === null
+            $type->getBase() === null && $type->getDeleteSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
                 ? Token::multi(
                     Token::textnlpush('case \'delete\': {'),
                     Token::textnlpush('if ($value->getId() === null)'),
@@ -492,6 +499,8 @@ class ResolveAttacher {
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
+                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+                    return null;
                 return Token::multi(
                     Token::text('case \'set'),
                     Token::text(\ucfirst(\addslashes($attr->getName()))),
@@ -542,6 +551,8 @@ class ResolveAttacher {
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
+                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+                    return null;
                 $value = Token::multi(
                     Token::text('(isset($args[\''),
                     Token::text(\addslashes($joint->getName())),
@@ -612,7 +623,7 @@ class ResolveAttacher {
             Token::textnl('//readonly static'),
             Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
             Token::textnlpush('switch($info->fieldName) {'),
-            $type->getBase() === null 
+            $type->getBase() === null && $type->getLoadSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
                 ? Token::multi(
                     Token::textnlpush('case \'load\': {'),
                     Token::text('return self::verify('),
@@ -629,6 +640,8 @@ class ResolveAttacher {
             Token::array(array_map(function ($query) use ($data, $type, $ns) {
                 if (!$query->isSearchQuery())
                     return Token::text('');
+                if ($query->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql'))
+                    return null;
                 if ($query->isLimitFirst())
                     return Token::multi(
                         Token::text('case \''),
@@ -707,6 +720,8 @@ class ResolveAttacher {
             Token::array(array_map(function ($query) use ($data, $type, $ns) {
                 if (!$query->isDeleteQuery())
                     return Token::text('');
+                if ($query->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql'))
+                    return null;
                 return Token::multi(
                     Token::text('case \''),
                     Token::text(\lcfirst($query->getName())),

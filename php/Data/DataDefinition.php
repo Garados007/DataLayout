@@ -4,6 +4,11 @@ class DataDefinition {
     private $environment;
     private $extensions;
     private $types;
+    private $createSecurity;
+    private $loadSecurity;
+    private $deleteSecurity;
+    private $defaultAttributeSecurity;
+    private $defaultJointSecurity;
     
     private function __construct() {}
 
@@ -24,6 +29,26 @@ class DataDefinition {
             if ($type->getName() == $name)
                 return $type;
         return null;
+    }
+    
+    public function getCreateSecurity(): Security {
+        return $this->createSecurity;
+    }
+
+    public function getLoadSecurity(): Security {
+        return $this->loadSecurity;
+    }
+
+    public function getDeleteSecurity(): Security {
+        return $this->deleteSecurity;
+    }
+
+    public function getDefaultAttributeSecurity(): Security {
+        return $this->defaultAttributeSecurity;
+    }
+    
+    public function getDefaultJointSecurity(): Security {
+        return $this->defaultJointSecurity;
     }
 
     public static function loadFromXml(\SimpleXMLElement $element): ?DataDefinition {
@@ -51,7 +76,22 @@ class DataDefinition {
                 if ($type !== null)
                     $def->types []= $type;
             }
-
+            
+        $def->createSecurity = isset($element->DefaultTypeSecurity->Create)
+            ? Security::loadFromXml($element->DefaultTypeSecurity->Create)
+            : new Security();
+        $def->loadSecurity = isset($element->DefaultTypeSecurity->Load)
+            ? Security::loadFromXml($element->DefaultTypeSecurity->Load)
+            : new Security();
+        $def->deleteSecurity = isset($element->DefaultTypeSecurity->Delete)
+            ? Security::loadFromXml($element->DefaultTypeSecurity->Delete)
+            : new Security();
+        $def->defaultAttributeSecurity = isset($element->DefaultTypeSecurity->DefaultAttribute)
+            ? Security::loadFromXml($element->DefaultTypeSecurity->DefaultAttribute)
+            : new Security();
+        $def->defaultJointSecurity = isset($element->DefaultTypeSecurity->DefaultJoint)
+            ? Security::loadFromXml($element->DefaultTypeSecurity->DefaultJoint)
+            : new Security();
         return $def;
     }
 

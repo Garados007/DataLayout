@@ -18,6 +18,10 @@ class Validator {
         if ($error !== null)
             return '[QueryReference] ' . $error;
 
+        $error = (new Security())->check($data);
+        if ($error !== null)
+            return '[Security] ' . $error;
+
         //Optimizer
         $error = (new DbTableNames())->check($data);
         if ($error !== null)

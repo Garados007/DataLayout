@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd"
+<DataDefinition xmlns="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-03/data-layout.xsd 
+    xsi:schemaLocation="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd 
         ./../../data-layout.xsd">
     <Environment>
         <EnvVars>
@@ -19,7 +19,7 @@
                 dbClassNamespace="Test\Generated\DB"
                 classNamespace="Test\Generated\GraphQL"
                 supported="true"
-                separateMutation="false"
+                separateMutation="true"
                 pagination="full" 
                 standalone="true"
             />

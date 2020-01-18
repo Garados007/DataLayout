@@ -1,5 +1,7 @@
 <?php namespace Data;
 
+use \Data\Security;
+
 class Query {
     private $inputVars;
     private $inputObj;
@@ -10,6 +12,7 @@ class Query {
     private $limit;
     private $limitVar;
     private $cache;
+    private $security;
 
     private function __construct() {}
 
@@ -107,6 +110,10 @@ class Query {
         return $this->cache;
     }
 
+    public function getSecurity(): Security {
+        return $this->security;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?Query {
         if ($element->getName() != "Query")
             return null;
@@ -179,6 +186,9 @@ class Query {
                 FILTER_VALIDATE_BOOLEAN
             );
         else $query->cache = false;
+        $query->security = isset($element->Security)
+            ? Security::loadFromXml($element->Security)
+            : new Security();
 
         if ($query->bounds == null)
             return null;

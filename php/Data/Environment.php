@@ -26,6 +26,10 @@ class Environment {
         self::$profile = $profile;
     }
 
+    public static function getProfile(): ?string {
+        return self::$profile;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?Environment {
         if ($element->getName() != "Environment")
             return null;

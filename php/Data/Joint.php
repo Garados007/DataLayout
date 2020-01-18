@@ -1,9 +1,12 @@
 <?php namespace Data;
 
+use \Data\Security;
+
 class Joint {
     private $name;
     private $target;
     private $required;
+    private $security;
 
     private function __construct() {}
 
@@ -19,6 +22,10 @@ class Joint {
         return $this->required;
     }
 
+    public function getSecurity(): Security {
+        return $this->security;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?Joint {
         if ($element->getName() != "Joint")
             return null;
@@ -32,6 +39,9 @@ class Joint {
                 FILTER_VALIDATE_BOOLEAN
             );
         else $joint->required = true;
+        $joint->security = isset($element->Security)
+            ? Security::loadFromXml($element->Security)
+            : new Security();
 
         return $joint;
     }

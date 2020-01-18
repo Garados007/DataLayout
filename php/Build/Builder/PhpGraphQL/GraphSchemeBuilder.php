@@ -3,20 +3,122 @@
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;
 use \Data\DataDefinition as DataDef;
+use \Data\Build;
 
 class GraphSchemeBuilder {
     public function buildSchema(Config $config, DataDef $data): Token {
         $mutate = $data->getEnvironment()->getBuild()->getSeparateMutation();
         $paginate = $data->getEnvironment()->getBuild()->getPagination();
-        $token = Token::array(array_map(function ($type) use ($config, $data, $mutate, $paginate) {
+        $emptyTypes = (function () use ($data, $mutate) {
+            $list = array();
+            $build = $data->getEnvironment()->getBuild();
+            foreach ($data->getTypes() as $type) {
+                $instRead = 0;
+                $instWrite = 0;
+                $statRead = 0;
+                $statWrite = 0;
+
+                if ($type->getBase() === null)
+                    $instRead++;
+                if ($type->getCreateSecurity()->isInclude($build, 'php-graphql'))
+                    $statWrite++;
+                if ($type->getLoadSecurity()->isInclude($build, 'php-graphql'))
+                    $statRead++;
+                if ($type->getDeleteSecurity()->isInclude($build, 'php-graphql'))
+                    $instWrite++;
+                foreach ($type->getAttributes() as $attr) {
+                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', true))
+                        $instRead++;
+                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', false))
+                        $instWrite++;
+                }
+                foreach ($type->getJoints() as $joint) {
+                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', true))
+                        $instRead++;
+                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', false))
+                        $instWrite++;
+                }
+                foreach ($type->getAccess() as $query) {
+                    if ($query->isSearchQuery() && $query->getSecurity()->isInclude($build, 'php-graphql'))
+                        $statRead++;
+                    if ($query->isDeleteQuery() && $query->getSecurity()->isInclude($build, 'php-graphql'))
+                        $statWrite++;
+                }
+
+                foreach ($data->getTypes() as $type2)
+                    foreach ($type2->getJoints() as $joint) 
+                        if ($joint->getTarget() == $type->getName()) {
+                            if ($joint->getSecurity()->isInclude($build, 'php-graphql', true))
+                                $instRead++;
+                        }
+
+                $name = $this->getQlTypeName($data, $type->getName());
+                $types = array(
+                    $name => $instRead + ($mutate ? 0 : $instWrite),
+                    $name . '_Mutatable' => $instWrite,
+                    $name . '_Static' => $statRead + ($mutate ? 0 : $statWrite),
+                    $name . '_StaticMutator' => $statWrite,
+                );
+
+                foreach ($types as $key => $value)
+                    if ($value == 0)
+                        $list []= $key;
+            }
+            foreach ($data->getTypes() as $type) {
+                $name = $this->getQlTypeName($data, $type->getName());
+
+                $countr = 0;
+                $countw = 0;
+
+                foreach ($this->getTypesPath($data, $type) as $parent) {
+                    $pname = $this->getQlTypeName($data, $parent->getName());
+
+                    if (!in_array($pname, $list))
+                        $countr++;
+                    if (!in_array($pname . '_Mutatable', $list))
+                        $countw++;
+                }
+
+                if ($countr == 0)
+                    $list[] = $name . '_Type';
+                if ($countw == 0)
+                    $list[] = $name . '_Mutator';
+            }
+            return $list;
+        })();
+        $redirect = (function () use ($data, $mutate, $emptyTypes) {
+            $list = array();
+            foreach ($data->getTypes() as $type) {
+                $name = $this->getQlTypeName($data, $type->getName());
+                $list[$name] = $name;
+                $list[$name . '_Type'] = $name . '_Type';
+                $list[$name . '_Static'] = 
+                    in_array($name . '_Static', $emptyTypes)
+                    ? null 
+                    : $name . '_Static';
+                $list[$name . '_Mutatable'] = 
+                    in_array($name . '_Mutatable', $emptyTypes)
+                    ? null 
+                    : $name . '_Mutatable';
+                $list[$name . '_Mutator'] = 
+                    in_array($name . '_Mutatable', $emptyTypes)
+                    ? $name . '_Type'
+                    : $name . '_Mutator';
+                $list[$name . '_StaticMutator'] =
+                    in_array($name . '_StaticMutator', $emptyTypes)
+                    ? $list[$name . '_Static']
+                    : $name . '_StaticMutator';
+            }
+            return $list;
+        })();
+        $token = Token::array(array_map(function ($type) use ($config, $data, $mutate, $paginate, $emptyTypes, $redirect) {
+            $name = $this->getQlTypeName($data, $type->getName());
             return Token::multi(
                 $this->printTypeDescription($type, true, $mutate),
                 Token::text('interface '),
-                Token::text($this->getQlTypeName($data, $type->getName())),
+                Token::text($name),
                 Token::textnlpush(' {'),
-                $type->getBase() === null
-                    ? $this->printTypeHead($type)
-                    : Token::text(''),
+                $this->printTypeHead($type),
                 $this->printTypeMember($config, $data, $type, $paginate),
                 $mutate 
                     ? Token::text('') 
@@ -25,13 +127,18 @@ class GraphSchemeBuilder {
                 Token::textnl('}'),
                 $this->printTypeDescription($type, false, $mutate),
                 Token::text('type '),
-                Token::text($this->getQlTypeName($data, $type->getName())),
+                Token::text($name),
                 Token::text('_Type implements '),
-                Token::array($this->intersperce(array_map(
-                    function ($type) use ($data) {
-                        return Token::text($this->getQlTypeName($data, $type->getName()));
+                Token::array($this->intersperce(array_reduce(
+                    $this->getTypesPath($data, $type),
+                    function ($list, $type) use ($data, $emptyTypes) {
+                        $name = $this->getQlTypeName($data, $type->getName());
+                        if (in_array($name, $emptyTypes))
+                            return $list;
+                        $list [] = Token::text($name);
+                        return $list;
                     },
-                    $this->getTypesPath($data, $type)
+                    array(),
                 ), Token::text(' & '))),
                 Token::textnlpush(' {'),
                 $this->printTypeHead($type),
@@ -46,99 +153,123 @@ class GraphSchemeBuilder {
                 }, $this->getTypesPath($data, $type))),
                 Token::pop(),
                 Token::textnl('}'),
-                $this->printStaticTypeDescription($type, $mutate),
-                Token::text('type '),
-                Token::text($this->getQlTypeName($data, $type->getName())),
-                Token::textnlpush('_Static {'),
-                Token::multi(
-                    $this->printSingleDescription('load an entry by its id'),
-                    Token::text('load(id: ID!): '),
-                    Token::textnl($this->getQlTypeName($data, $type->getName())),
-                    $this->printSelectQueryDefList($data, $type, $paginate),
-                    $mutate 
-                        ? Token::text('')
-                        : $this->printDeleteQueryDefList($data, $type),
-                ),
-                Token::pop(),
-                Token::textnl('}'),
-                !$mutate
+                in_array($name . '_Static', $emptyTypes)
                     ? Token::text('')
                     : Token::multi(
-                        $this->printTypeDescription($type, true, false),
-                        Token::text('interface '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
-                        Token::textnlpush('_Mutatable {'),
-                        $this->printSetTypeMember($config, $data, $type, $paginate),
-                        Token::pop(),
-                        Token::textnl('}'),
-                        $this->printTypeDescription($type, false, false),
+                        $this->printStaticTypeDescription($type, $mutate),
                         Token::text('type '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
-                        Token::text('_Mutator implements '),
-                        Token::array($this->intersperce(array_map(
-                            function ($type) use ($data) {
-                                return Token::multi(
-                                    Token::text($this->getQlTypeName($data, $type->getName())),
-                                    Token::text(' & '),
-                                    Token::text($this->getQlTypeName($data, $type->getName())),
-                                    Token::text('_Mutatable')
-                                );
-                            },
-                            $this->getTypesPath($data, $type)
-                        ), Token::text(' & '))),
-                        Token::textnlpush(' {'),
-                        $this->printTypeHead($type),
-                        Token::array(array_map(function ($type) use ($config, $data, $paginate) {
-                            return Token::multi(
-                                $this->printTypeMember($config, $data, $type, $paginate),
-                                $this->printSetTypeMember($config, $data, $type, $paginate),
-                            );
-                        }, $this->getTypesPath($data, $type))),
-                        Token::pop(),
-                        Token::textnl('}'),
-                        $this->printStaticTypeDescription($type, false),
-                        Token::text('type '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
-                        Token::textnlpush('_StaticMutator {'),
+                        Token::text($name),
+                        Token::textnlpush('_Static {'),
                         Token::multi(
-                            $this->printSingleDescription('load an entry by its id'),
-                            Token::text('load(id: ID!): '),
-                            Token::textnl($this->getQlTypeName($data, $type->getName())),
+                            $type->getLoadSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
+                                ? Token::multi(
+                                    $this->printSingleDescription('load an entry by its id'),
+                                    Token::text('load(id: ID!): '),
+                                    Token::textnl($name),
+                                )
+                                : Token::text(''),
                             $this->printSelectQueryDefList($data, $type, $paginate),
-                            $this->printDeleteQueryDefList($data, $type),
+                            $mutate 
+                                ? Token::text('')
+                                : $this->printDeleteQueryDefList($data, $type),
                         ),
                         Token::pop(),
                         Token::textnl('}'),
+                    ),
+                !$mutate
+                    ? Token::text('')
+                    : Token::multi(
+                        in_array($name . '_Mutatable', $emptyTypes)
+                            ? Token::text('')
+                            : Token::multi(
+                                $this->printTypeDescription($type, true, false),
+                                Token::text('interface '),
+                                Token::text($name),
+                                Token::textnlpush('_Mutatable {'),
+                                $this->printSetTypeMember($config, $data, $type, $paginate),
+                                Token::pop(),
+                                Token::textnl('}'),
+                            ),
+                        $redirect[$name . '_Mutator'] != $name . '_Mutator'
+                            ? Token::text('')
+                            : Token::multi(
+                                $this->printTypeDescription($type, false, false),
+                                Token::text('type '),
+                                Token::text($name),
+                                Token::text('_Mutator implements '),
+                                Token::array($this->intersperce(array_reduce(
+                                    $this->getTypesPath($data, $type),
+                                    function ($list, $type) use ($data, $name, $emptyTypes) {
+                                        if (!in_array($name, $emptyTypes))
+                                            $list []= Token::text($name);
+                                        if (!in_array($name . '_Mutatable', $emptyTypes))
+                                            $list []= Token::text($name . '_Mutatable');
+                                        return $list;
+                                    },
+                                    array()
+                                ), Token::text(' & '))),
+                                Token::textnlpush(' {'),
+                                $this->printTypeHead($type),
+                                Token::array(array_map(function ($type) use ($config, $data, $paginate) {
+                                    return Token::multi(
+                                        $this->printTypeMember($config, $data, $type, $paginate),
+                                        $this->printSetTypeMember($config, $data, $type, $paginate),
+                                    );
+                                }, $this->getTypesPath($data, $type))),
+                                Token::pop(),
+                                Token::textnl('}'),
+                            ),
+                        $redirect[$name . '_StaticMutator'] != $name . '_StaticMutator'
+                            ? Token::text('')
+                            : Token::multi(
+                                $this->printStaticTypeDescription($type, false),
+                                Token::text('type '),
+                                Token::text($name),
+                                Token::textnlpush('_StaticMutator {'),
+                                Token::multi(
+                                    $type->getLoadSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
+                                        ? Token::multi(
+                                            $this->printSingleDescription('load an entry by its id'),
+                                            Token::text('load(id: ID!): '),
+                                            Token::textnl($name),
+                                        )
+                                        : Token::text(''),
+                                    $this->printSelectQueryDefList($data, $type, $paginate),
+                                    $this->printDeleteQueryDefList($data, $type),
+                                ),
+                                Token::pop(),
+                                Token::textnl('}'),
+                            ),
                     ),
                 $paginate == 'none'
                     ? Token::text('')
                     : Token::multi(
                         Token::textnlpush('"""'),
                         Token::text('The Pagination object that return a list of '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnlpop('.'),
                         Token::textnl('"""'),
                         Token::text('type '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnlpush('_Pagination {'),
                         $this->printSingleDescription('A list of edges that contains the result values'),
                         Token::text('edges: ['),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnl('_Edge!]!'),
                         $this->printSingleDescription('The information about the current result page.'),
                         Token::textnlpop('pageInfo: PageInfo!'),
                         Token::textnl('}'),
                         Token::textnlpush('"""'),
                         Token::text('The Pagination Edge that contains a single entry of '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnlpop('.'),
                         Token::textnl('"""'),
                         Token::text('type '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnlpush('_Edge {'),
                         $this->printSingleDescription('The value of the current edge'),
                         Token::text('node: '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
+                        Token::text($name),
                         Token::textnl('!'),
                         $this->printSingleDescription('The cursor to identify the edge in this pagination'),
                         Token::textnlpop('cursor: String!'),
@@ -173,7 +304,11 @@ class GraphSchemeBuilder {
                 Token::text('type '),
                 Token::text($this->getQlTypeName($data, $data->getEnvironment()->getBuild()->getClassLoaderType() ?: 'Query')),
                 Token::textnlpush(' {'),
-                Token::array(array_map(function ($type) use ($data) {
+                Token::array(array_map(function ($type) use ($data, $redirect) {
+                    $name = $this->getQlTypeName($data, $type->getName());
+                    $target = $redirect[$name . '_Static'];
+                    if ($target === null)
+                        return null;
                     return Token::multi(
                         $this->printMultiDescription(
                             Token::text('Access to the static members of the type '),
@@ -181,8 +316,7 @@ class GraphSchemeBuilder {
                         ),
                         Token::text(\lcfirst($type->getName())),
                         Token::text(': '),
-                        Token::text($this->getQlTypeName($data, $type->getName())),
-                        Token::textnl('_Static'),
+                        Token::textnl($target),
                     );
                 }, $data->getTypes())),
                 Token::pop(),
@@ -197,7 +331,11 @@ class GraphSchemeBuilder {
                         Token::text('type '),
                         Token::text($this->getQlTypeName($data, $data->getEnvironment()->getBuild()->getClassLoaderType() ?: 'Query')),
                         Token::textnlpush('_Mutator {'),
-                        Token::array(array_map(function ($type) use ($data) {
+                        Token::array(array_map(function ($type) use ($data, $redirect) {
+                            $name = $this->getQlTypeName($data, $type->getName());
+                            $target = $redirect[$name . '_StaticMutator'];
+                            if ($target === null)
+                                return null;
                             return Token::multi(
                                 $this->printMultiDescription(
                                     Token::text('Access to the static members of the type '),
@@ -205,8 +343,7 @@ class GraphSchemeBuilder {
                                 ),
                                 Token::text(\lcfirst($type->getName())),
                                 Token::text(': '),
-                                Token::text($this->getQlTypeName($data, $type->getName())),
-                                Token::textnl('_StaticMutator'),
+                                Token::textnl($target),
                             );
                         }, $data->getTypes())),
                         Token::pop(),
@@ -297,7 +434,7 @@ class GraphSchemeBuilder {
 
     private function printTypeMember(Config $config, DataDef $data, \Data\Type $type, string $paginate): Token {
         return Token::multi(
-            $this->printAttributeDefList($type->getAttributes()),
+            $this->printAttributeDefList($data->getEnvironment()->getBuild(), $type->getAttributes()),
             $this->printJointDefList($data, $type->getJoints()),
             $this->printReverseJointDefList($data, $type, $paginate)
         );
@@ -305,13 +442,13 @@ class GraphSchemeBuilder {
 
     private function printSetTypeMember(Config $config, DataDef $data, \Data\Type $type, string $paginate): Token {
         return Token::multi(
-            $type->getBase() === null 
+            $type->getBase() === null && $type->getDeleteSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
                 ? Token::multi(
                     $this->printSingleDescription('deletes this entry'),
                     Token::textnl('delete: Boolean!'),
                 )
                 : Token::text(''),
-            $this->printSetAttributeDefList($type->getAttributes()),
+            $this->printSetAttributeDefList($data->getEnvironment()->getBuild(), $type->getAttributes()),
             $this->printSetJointDefList($data, $type->getJoints()),
         );
     }
@@ -321,8 +458,10 @@ class GraphSchemeBuilder {
         return \ucfirst($name);
     }
 
-    private function printAttributeDefList(array $attrs): Token {
-        return Token::array(array_map(function ($attr) {
+    private function printAttributeDefList(Build $build, array $attrs): Token {
+        return Token::array(array_map(function ($attr) use ($build) {
+            if ($attr->getSecurity()->isExclude($build, 'php-graphql', true))
+                return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
                     Token::text('Attribute '),
@@ -341,8 +480,10 @@ class GraphSchemeBuilder {
         }, $attrs));
     }
 
-    private function printSetAttributeDefList(array $attrs): Token {
-        return Token::array(array_map(function ($attr) {
+    private function printSetAttributeDefList(Build $build, array $attrs): Token {
+        return Token::array(array_map(function ($attr) use ($build) {
+            if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+                return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
                     Token::text('Change the value of attribute '),
@@ -371,6 +512,8 @@ class GraphSchemeBuilder {
 
     private function printJointDefList(DataDef $data, array $joints): Token {
         return Token::array(array_map(function ($joint) use ($data) {
+            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
                     Token::text('Joint '),
@@ -391,6 +534,8 @@ class GraphSchemeBuilder {
     
     private function printSetJointDefList(DataDef $data, array $joints): Token {
         return Token::array(array_map(function ($joint) use ($data) {
+            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+                return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
                     Token::text('Change Joint '),
@@ -421,6 +566,8 @@ class GraphSchemeBuilder {
         foreach ($data->getTypes() as $t)
             foreach ($t->getJoints() as $joint) 
                 if ($joint->getTarget() == $type->getName()) {
+                    if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                        continue;
                     $tokens []= Token::multi(
                         $this->printMultiDescription(
                             Token::text('Get all '),
@@ -451,6 +598,8 @@ class GraphSchemeBuilder {
     private function printSelectQueryDefList(DataDef $data, \Data\Type $type, string $paginate): Token {
         return Token::array(array_map(function ($query) use ($data, $type, $paginate) {
             if (!$query->isSearchQuery())
+                return null;
+            if ($query->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql'))
                 return null;
             $namefy = function ($name, $array) use ($data) {
                 $name = Token::text($this->getQlTypeName($data, $name));
@@ -530,6 +679,8 @@ class GraphSchemeBuilder {
     private function printDeleteQueryDefList(DataDef $data, \Data\Type $type): Token {
         return Token::array(array_map(function ($query) use ($data, $type) {
             if (!$query->isDeleteQuery())
+                return null;
+            if ($query->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql'))
                 return null;
             $namefy = function ($name, $array) use ($data) {
                 $name = Token::text($this->getQlTypeName($data, $name));

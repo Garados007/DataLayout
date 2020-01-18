@@ -1,6 +1,7 @@
 <?php namespace Data;
 
 use \Build\Token as Token;
+use \Data\Security;
 
 class Type {
     private $attributes;
@@ -13,6 +14,11 @@ class Type {
     private $extension = null;
     private $dbName = null;
     private $bucket = null;
+    private $createSecurity;
+    private $loadSecurity;
+    private $deleteSecurity;
+    private $defaultAttributeSecurity;
+    private $defaultJointSecurity;
     
     private function __construct() {}
 
@@ -82,6 +88,26 @@ class Type {
         $this->bucket = $bucket;
     }
 
+    public function getCreateSecurity(): Security {
+        return $this->createSecurity;
+    }
+
+    public function getLoadSecurity(): Security {
+        return $this->loadSecurity;
+    }
+
+    public function getDeleteSecurity(): Security {
+        return $this->deleteSecurity;
+    }
+
+    public function getDefaultAttributeSecurity(): Security {
+        return $this->defaultAttributeSecurity;
+    }
+    
+    public function getDefaultJointSecurity(): Security {
+        return $this->defaultJointSecurity;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?\Data\Type {
         if ($element->getName() != "Type")
             return null;
@@ -130,6 +156,21 @@ class Type {
                 FILTER_VALIDATE_BOOLEAN
             );
         else $type->fullQuery = false;
+        $type->createSecurity = isset($element->Security->Create)
+            ? Security::loadFromXml($element->Security->Create)
+            : new Security();
+        $type->loadSecurity = isset($element->Security->Load)
+            ? Security::loadFromXml($element->Security->Load)
+            : new Security();
+        $type->deleteSecurity = isset($element->Security->Delete)
+            ? Security::loadFromXml($element->Security->Delete)
+            : new Security();
+        $type->defaultAttributeSecurity = isset($element->Security->DefaultAttribute)
+            ? Security::loadFromXml($element->Security->DefaultAttribute)
+            : new Security();
+        $type->defaultJointSecurity = isset($element->Security->DefaultJoint)
+            ? Security::loadFromXml($element->Security->DefaultJoint)
+            : new Security();
 
         return $type;
     }

@@ -2,6 +2,7 @@
 
 class Build {
     protected $supported;
+    protected $security;
 
     protected function __construct() {
         $this->supported = true;
@@ -10,9 +11,23 @@ class Build {
     public function getSupported(): bool {
         return $this->supported;
     }
+
+    public function getSecurity(): string {
+        return $this->security;
+    }
+
+    public function isSecurityInclude(): bool {
+        return $this->security == 'include';
+    }
+
+    public function isSecurityExclude(): bool {
+        return $this->security == 'exclude';
+    }
+
     public static function empty(): Build {
         $build = new Build();
         $build->supported = true;
+        $build->security = 'include';
         return $build;
     }
 
@@ -22,18 +37,29 @@ class Build {
         self::$buildMode = $mode;
     }
 
+    public static function getBuildMode(): string {
+        return self::$buildMode;
+    }
+
     public static function loadFromXml(\SimpleXMLElement $element): ?Build {
         if ($element->getName() != "Build")
             return null;
 
         switch (self::$buildMode) {
             case 'php':
-                return PhpBuild::loadFromXml($element);
+                $build = PhpBuild::loadFromXml($element);
+                break;
             case 'php-graphql':
-                return PHPGraphqlBuild::loadFromXml($element);
+                $build = PHPGraphqlBuild::loadFromXml($element);
+                break;
             default:
                 throw new \Exception('build mode ' . self::$buildMode . ' is not supported');
         }
+
+        if (isset($element->attributes()->security))
+            $build->security = (string)$element->attributes()->security;
+
+        return $build;
     }
 }
 
@@ -90,6 +116,7 @@ class PhpBuild extends Build {
         $build->publicMemberAccess = false;
         $build->maxDbTableNameLength = 0;
         $build->fullQuery = 'auto';
+        $build->security = 'include';
         return $build;
     }
 
@@ -198,6 +225,7 @@ class PhpGraphqlBuild extends Build {
         $build->classLoaderType = '';
         $build->pagination = 'exceptQuery';
         $build->separateMutation = true;
+        $build->security = 'include';
         return $build;
     }
 
