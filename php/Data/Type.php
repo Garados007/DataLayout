@@ -184,8 +184,13 @@ class Type {
             $this->base === null
                 ? Token::text('AUTO_INCREMENT ')
                 : Token::text(''),
-            Token::textnl('PRIMARY KEY'),
-            Token::text(', `_type` TEXT NOT NULL'),
+            Token::text('PRIMARY KEY'),
+            $this->base === null 
+                ? Token::multi(
+                    Token::nl(),
+                    Token::text(', `_type` TEXT NOT NULL'),
+                )
+                : Token::text(''),
             Token::array(array_map(function ($attr) {
                 $res = array();
                 $res []= Token::nl();

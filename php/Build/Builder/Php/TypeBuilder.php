@@ -262,7 +262,7 @@ class TypeBuilder {
                             if ($type->getName() == $t->getName())
                                 return Token::text('');
                             return Token::multi(
-                                Token::text('LEFT INNER JOIN `'),
+                                Token::text('LEFT JOIN `'),
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                 Token::text($t->getDbName()),
                                 Token::textnl('` USING (id)'),
@@ -272,7 +272,8 @@ class TypeBuilder {
                 ), '. "', '" . PHP_EOL', 'addslashes'),
                 Token::textnlpop('"'),
                 Token::textnl(');'),
-                Token::textnlpop('return static::loadFromDbResult($result);'),
+                Token::textnl('$entry = $result->getEntry();'),
+                Token::textnlpop('return !$entry ? null : static::loadFromDbResult($entry);'),
                 Token::textnl('}'),
                 Token::nl()
             ),
@@ -289,8 +290,7 @@ class TypeBuilder {
                         Token::textnlpush('return array_replace('),
                         Token::textnl('parent::serialize(),'),
                         Token::textnlpush('array('),
-                        Token::textnl('\'id\' => $this->id,'),
-                        Token::text('\'_type\' => $this->_type'),
+                        Token::text('\'id\' => $this->id'),
                     ),
                 Token::array(array_map(function ($attr) {
                     $data = Token::multi(
@@ -392,13 +392,10 @@ class TypeBuilder {
             //loadFromDbResult
             $type->getBucket() === null 
                 ? Token::multi(
-                    Token::text('protected static function loadFromDbResult(\DBResult $result): ?'),
+                    Token::text('protected static function loadFromDbResult(array $entry): ?'),
                     Token::text($this->getRootType($data, $type)),
                     Token::textnlpush(' {'),
                     Token::textnl('$data = new self();'),
-                    Token::textnl('$entry = $result->getEntry();'),
-                    Token::textnlpush('if (!$entry)'),
-                    Token::textnlpop('return null;'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
                     Token::textnl('$data->_type = $entry[\'_type\'];'),
                     Token::array(array_map(function ($attr) {
@@ -448,12 +445,9 @@ class TypeBuilder {
                 : Token::multi(
                     $type->getBase() === null
                         ? Token::multi(
-                            Token::text('protected static function loadFromDbResult(\DBResult $result): ?'),
+                            Token::text('protected static function loadFromDbResult(array $entry): ?'),
                             Token::text($this->getRootType($data, $type)),
                             Token::textnlpush(' {'),
-                            Token::textnl('$entry = $result->getEntry();'),
-                            Token::textnlpush('if (!$entry)'),
-                            Token::textnlpop('return null;'),
                             Token::textnlpush('switch ($entry[\'_type\']) {'),
                             Token::array(array_map(function ($type) use ($data) {
                                 return Token::multi(
@@ -477,7 +471,7 @@ class TypeBuilder {
                     Token::textnlpush(' {'),
                     Token::textnl('$data = new self();'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
-                    Token::textnl('$data->_type = (int)$entry[\'_type\'];'),
+                    Token::textnl('$data->_type = $entry[\'_type\'];'),
                     Token::array(array_map(function ($attr) use ($data, $type) {
                         $defType = $this->findAttributeType($data, $type->getName(), $attr->getName());
                         if ($defType === null) return Token::text('');
@@ -542,7 +536,7 @@ class TypeBuilder {
                 Token::textnlpush('if ($this->id === null) {'),
                 Token::multi(
                     Token::textnl('//add to db'),
-                    Token::textnl('$__type = \'\\\'\' . DB::escape($this->_type) . \'\\\'\';'),
+                    Token::textnl('$__type = \'\\\'\' . \\DB::escape($this->_type) . \'\\\'\';'),
                     Token::array(array_map(function ($attr) {
                         $res = array();
                         $res []= Token::text('$_');
@@ -687,7 +681,7 @@ class TypeBuilder {
                                 Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                 Token::text($type->getDbName()),
                                 Token::textnlpush('`'),
-                                Token::text('(id, `_type`'),
+                                Token::text('(id'),
                                 Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
@@ -705,7 +699,7 @@ class TypeBuilder {
                                     }, $type->getJoints())
                                 )),
                                 Token::textnlpop(')'),
-                                Token::text('VALUES (${_id}, ${__type}'),
+                                Token::text('VALUES (${_id}'),
                                 Token::array(array_merge(
                                     array_map(function ($attr) {
                                         return Token::multi(
@@ -975,7 +969,7 @@ class TypeBuilder {
                                         if ($type->getName() == $t->getName())
                                             return Token::text('');
                                         return Token::multi(
-                                            Token::text('LEFT INNER JOIN `'),
+                                            Token::text('LEFT JOIN `'),
                                             Token::text($data->getEnvironment()->getBuild()->getDbPrefix()),
                                             Token::text($t->getDbName()),
                                             Token::textnl('` USING (id)'),

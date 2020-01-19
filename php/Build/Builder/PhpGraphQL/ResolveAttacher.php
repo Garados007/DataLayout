@@ -23,7 +23,7 @@ class ResolveAttacher {
             Token::textnlpush('public static function flushSaveBuffer() {'),
             Token::textnlpush('foreach (self::$saveBuffer as $typename => $list) '),
             Token::textnlpush('foreach ($list as $id => $entrys)'),
-            Token::textnlpush('if ($id === null) {'),
+            Token::textnlpush('if ($id === null || $id == \'\') {'),
             Token::textnlpush('foreach ($entrys as $entry)'),
             Token::textnlpop('$entry->save();'),
             Token::pop(),
@@ -35,9 +35,9 @@ class ResolveAttacher {
                 : Token::multi(
                     Token::text('\\\\'),
                     Token::text(addslashes($data->getEnvironment()->getBuild()->getDbClassNamespace())),
-                    Token::text('\\\\'),
+                    Token::text(''),
                 ),
-            Token::textnl('\' . $typename}::load($id);'),
+            Token::textnl('\\\\Data\\\\\' . $typename}::load($id);'),
             Token::textnlpush('foreach ($entrys as $key => $entry)'),
             Token::textnlpop('$value->{!${\'\'} = \'set\' . \\ucfirst($key)}($entry);'),
             Token::textnlpop('$value->save();'),
@@ -87,8 +87,9 @@ class ResolveAttacher {
                 Token::textnlpush('else {'),
                 Token::textnl('$prev = $target[\'resolveField\'];'),
                 Token::textnlpush('$target[\'resolveField\'] = function ($value, $args, $content, $info) use ($prev, $handler) {'),
-                Token::textnl('$prev($value, $args, $content, $info);'),
-                Token::textnlpop('$handler($value, $args, $content, $info);'),
+                Token::textnlpush('if (($result = $prev($value, $args, $content, $info)) !== null)'),
+                Token::textnlpop('return $result;'),
+                Token::textnlpop('return $handler($value, $args, $content, $info);'),
                 Token::textnlpop('};'),
                 Token::textnlpop('}'),
                 Token::textnl('}'),
@@ -227,16 +228,17 @@ class ResolveAttacher {
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_Mutatable' : ''),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
-            $mutator 
+                $mutator 
                 ? Token::multi(
                     Token::text('self::resolve'),
                     Token::text($this->getQlTypeName($data, $type->getName())),
                     Token::textnl('($config, $typeNode, $typeMap);'),
-                )
-                : $this->buildReadonlyTypeInstance($data, $type),
-            $mutate 
-                ? $this->buildWriteTypeInstance($data, $type)
-                : Token::text(''),
+                    )
+                    : $this->buildReadonlyTypeInstance($data, $type),
+                    $mutate 
+                    ? $this->buildWriteTypeInstance($data, $type)
+                    : Token::text(''),
+            $this->buildResolveType($data, $type, true, $mutator),
             Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
@@ -257,6 +259,7 @@ class ResolveAttacher {
                     Token::textnl('($config, $typeNode, $typeMap);'),
                 );
             }, $this->getTypesPath($data, $type))),
+            $this->buildResolveType($data, $type, true, $mutator),
             Token::textnlpop('return $config;'),
             Token::textnl('}')
         );
@@ -370,6 +373,69 @@ class ResolveAttacher {
         );
     }
 
+    private function buildResolveType(DataDef $data, \Data\Type $type, bool $instance, bool $mutate): Token {
+        $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
+        $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
+        $table = array();
+        foreach ($data->getTypes() as $type) 
+            $table[$type->getName()] = $type->getBase();
+        $group = array($type->getName());
+        if ($type->getBase() !== null)
+            $group []= $type->getBase();
+        $keys = array_keys($table);
+        $changed = true;
+        while ($changed) {
+            $changed = false;
+            foreach ($keys as $key) {
+                if (in_array($key, $group)) {
+                    if ($table[$key] !== null && !in_array($table[$key], $group)) {
+                        $group []= $table[$key];
+                        $changed = true;
+                    }
+                }
+                elseif ($table[$key] !== null && in_array($table[$key], $group)) {
+                    $group []= $key;
+                    $changed = true;
+                }
+            }
+            $keys = array_diff($keys, $group);
+        }
+        $levels = array();
+        foreach ($group as $key)
+            if ($table[$key] === null)
+                $levels[0][] = $key;
+        $group = array_diff($group, $levels[0]);
+        for ($i = 1; count($group) > 0; ++$i) {
+            foreach ($group as $key)
+                if (in_array($table[$key], $levels[$i - 1]))
+                    $levels[$i][] = $key;
+            $group = array_diff($group, $levels[$i]);
+        }
+        $levels = \array_reverse($levels);
+        
+        return Token::multi(
+            Token::textnlpush('$config[\'resolveType\'] = function ($value, $context, $info) {'),
+            Token::textnlpush('switch (true) {'),
+            Token::array(array_map(function ($level) use ($ns, $data, $instance, $mutate) {
+                return Token::array(array_map(function ($key) use ($ns, $data, $instance, $mutate) {
+                    return Token::multi(
+                        Token::text('case $value instanceof '),
+                        Token::text($ns),
+                        Token::text($key),
+                        Token::textnlpush(':'),
+                        Token::text('return $info->schema->getType(\''),
+                        Token::text($this->getQlTypeName($data, $key)),
+                        Token::text($mutate ? '_Mutator' : '_Type'),
+                        Token::textnlpop('\');'),
+                    );
+                }, $level));
+            }, $levels)),
+            Token::pop(),
+            Token::textnlpop('}'),
+            Token::textnl('};'),
+        );
+    }
+
     private function buildReadonlyTypeInstance(DataDef $data, \Data\Type $type): Token {
         return Token::multi(
             Token::textnl('//readonly instance'),
@@ -380,10 +446,7 @@ class ResolveAttacher {
                     Token::textnlpush('case \'id\': {'),
                     Token::textnlpush('return $value->getId() === null'),
                     Token::textnl('? null'),
-                    Token::text(': \''),
-                    Token::text(\addslashes($type->getName())),
-                    Token::textnlpop(',\' . $value->getId();'),
-                    Token::pop(),
+                    Token::textnlpop(': $value->get_Type() . \',\' . $value->getId();'),
                     Token::textnl('}'),
                 )
                 : Token::text(''),
@@ -511,11 +574,9 @@ class ResolveAttacher {
                     $this->buildInputConverter(
                         $attr->getType(),
                         Token::multi(
-                            Token::text('(isset($args[\''),
+                            Token::text('$args[\''),
                             Token::text(\addslashes($attr->getName())),
-                            Token::text('\']) ? $args[\''),
-                            Token::text(\addslashes($attr->getName())),
-                            Token::text('\'] : null)'),
+                            Token::text('\']'),
                         ),
                         $attr->getOptional(),
                     ),
@@ -623,17 +684,14 @@ class ResolveAttacher {
             Token::textnl('//readonly static'),
             Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
             Token::textnlpush('switch($info->fieldName) {'),
-            $type->getBase() === null && $type->getLoadSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
+            $type->getLoadSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
                 ? Token::multi(
                     Token::textnlpush('case \'load\': {'),
-                    Token::text('return self::verify('),
-                    Token::text($ns),
-                    Token::text($type->getName()),
-                    Token::textnlpush('::load('),
+                    Token::textnlpush('return self::verify('),
                     Token::text('self::idResolve'),
                     Token::text($type->getName()),
                     Token::textnlpop('($args[\'id\'])'),
-                    Token::textnlpop('));'),
+                    Token::textnlpop(');'),
                     Token::textnl('}')
                 )
                 : Token::text(''),
@@ -713,14 +771,92 @@ class ResolveAttacher {
     private function buildWriteTypeStatic(DataDef $data, \Data\Type $type): Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
         $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
+        $build = $data->getEnvironment()->getBuild();
         return Token::multi(
             Token::textnl('//write static'),
             Token::textnlpush('self::cascade($config, function ($value, $args, $content, $info) {'),
             Token::textnlpush('switch($info->fieldName) {'),
-            Token::array(array_map(function ($query) use ($data, $type, $ns) {
+            $type->getCreateSecurity()->isExclude($build, 'php-graphql')
+                ? Token::text('')
+                : Token::multi(
+                    Token::textnlpush('case \'create\': {'),
+                    Token::text('$obj = new '),
+                    Token::text($ns),
+                    Token::text($type->getName()),
+                    Token::textnl('();'),
+                    Token::array(array_map(function ($type) use ($build) {
+                        return Token::multi(
+                            Token::array(array_map(function ($attr) use ($build) {
+                                if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+                                    return null;
+                                return Token::multi(
+                                    !$attr->getOptional() && $attr->hasDefault()
+                                        ? Token::multi(
+                                            Token::text('if (isset($args[\''),
+                                            Token::text(\addslashes($attr->getName())),
+                                            Token::textnlpush('\']))'),
+                                            Token::text('$obj->set'),
+                                            Token::pop(),
+                                        )
+                                        : Token::text('$obj->set'),
+                                    Token::text(\ucfirst($attr->getName())),
+                                    Token::text('('),
+                                    $this->buildInputConverter(
+                                        $attr->getType(),
+                                        Token::multi(
+                                            Token::text('$args[\''),
+                                            Token::text(\addslashes($attr->getName())),
+                                            Token::text('\']')
+                                        ),
+                                        $attr->getOptional()
+                                    ),
+                                    Token::textnl(');')
+                                );
+                            }, $type->getAttributes())),
+                            Token::array(array_map(function ($joint) use ($type, $build) {
+                                if ($joint->getSecurity()->isExclude($build, 'php-graphql', false))
+                                    return null;
+                                $par = Token::multi(
+                                    Token::text('$args[\''),
+                                    Token::text(\addslashes($joint->getName())),
+                                    Token::text('\']')
+                                );
+                                return Token::multi(
+                                    Token::text('$obj->set'),
+                                    Token::text(\ucfirst($joint->getName())),
+                                    Token::text('('),
+                                    $joint->getRequired()
+                                        ? Token::text('')
+                                        : Token::multi(
+                                            Token::text('!isset('),
+                                            $par,
+                                            Token::textnlpush(')'),
+                                            Token::textnl('? null'),
+                                            Token::text(': '),
+                                        ),
+                                    Token::text('self::idResolve'),
+                                    Token::text(\ucfirst($joint->getTarget())),
+                                    Token::text('('),
+                                    $par,
+                                    $joint->getRequired()
+                                        ? Token::text(')')
+                                        : Token::textnlpop(')'),
+                                    Token::textnl(');')
+                                );
+                            }, $type->getJoints())),
+                        );
+                    }, $this->getTypesPath($data, $type))),
+                    Token::textnl('$obj->save();'),
+                    // Token::text('self::$saveBuffer[\''),
+                    // Token::text(addslashes($type->getName())),
+                    // Token::textnl('\'][null][] = $obj;'),
+                    Token::textnlpop('return $obj;'),
+                    Token::textnl('}'),
+                ),
+            Token::array(array_map(function ($query) use ($data, $type, $ns, $build) {
                 if (!$query->isDeleteQuery())
                     return Token::text('');
-                if ($query->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql'))
+                if ($query->getSecurity()->isExclude($build, 'php-graphql'))
                     return null;
                 return Token::multi(
                     Token::text('case \''),
@@ -763,7 +899,7 @@ class ResolveAttacher {
             Token::text('if ($parts[0] != \''),
             Token::text($type->getName()),
             Token::textnlpush('\')'),
-            Token::textnlpop('throw new \\Exception(\'unexcepted id source\');'),
+            Token::textnlpop('throw new \\Exception(\'unexcepted id source: \' . $parts[0]);'),
             Token::text('$obj = '),
             Token::text($ns),
             Token::text($type->getName()),
@@ -877,9 +1013,9 @@ class ResolveAttacher {
                 Token::text(')')
             ));
             case 'date': return $null(Token::multi(
-                Token::text('date('),
+                Token::text('date(\'c\', '),
                 $value,
-                Token::text(', \'c\')'),
+                Token::text(')'),
             ));
             case 'json': return $null(Token::multi(
                 Token::text('json_encode('),
@@ -894,13 +1030,16 @@ class ResolveAttacher {
 
     public function buildInputConverter(string $type, Token $value, bool $nullable): Token {
         $null = function ($tokens) use ($value, $nullable) {
+            if (!$nullable)
+                return $tokens;
             return Token::multi(
+                Token::text('isset('),
                 $value,
-                Token::textnlpush(' === null'),
-                Token::textnl('? null'),
-                Token::text(': '),
+                Token::textnlpush(')'),
+                Token::text('? '),
                 $tokens,
-                Token::pop(),
+                Token::nl(),
+                Token::textnlpop(': null'),
             );
         };
         switch ($type) {
@@ -915,7 +1054,7 @@ class ResolveAttacher {
             case 'ulong': 
             case 'float':
             case 'double': 
-            case 'string': return $value;
+            case 'string': return $null($value);
             case 'bytes': return $null(Token::multi(
                 Token::text('base64_decode('),
                 $value,

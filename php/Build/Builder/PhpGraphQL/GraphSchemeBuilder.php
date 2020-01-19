@@ -171,7 +171,10 @@ class GraphSchemeBuilder {
                             $this->printSelectQueryDefList($data, $type, $paginate),
                             $mutate 
                                 ? Token::text('')
-                                : $this->printDeleteQueryDefList($data, $type),
+                                : Token::multi(
+                                    $this->printCreateDefList($data, $type),
+                                    $this->printDeleteQueryDefList($data, $type),
+                                ),
                         ),
                         Token::pop(),
                         Token::textnl('}'),
@@ -199,7 +202,8 @@ class GraphSchemeBuilder {
                                 Token::text('_Mutator implements '),
                                 Token::array($this->intersperce(array_reduce(
                                     $this->getTypesPath($data, $type),
-                                    function ($list, $type) use ($data, $name, $emptyTypes) {
+                                    function ($list, $type) use ($data, $emptyTypes) {
+                                        $name = $this->getQlTypeName($data, $type->getName());
                                         if (!in_array($name, $emptyTypes))
                                             $list []= Token::text($name);
                                         if (!in_array($name . '_Mutatable', $emptyTypes))
@@ -234,6 +238,7 @@ class GraphSchemeBuilder {
                                             Token::textnl($name),
                                         )
                                         : Token::text(''),
+                                    $this->printCreateDefList($data, $type),
                                     $this->printSelectQueryDefList($data, $type, $paginate),
                                     $this->printDeleteQueryDefList($data, $type),
                                 ),
@@ -593,6 +598,55 @@ class GraphSchemeBuilder {
                     );
                 }
         return Token::array($tokens);
+    }
+
+    private function printCreateDefList(DataDef $data, \Data\Type $type): Token {
+        $build = $data->getEnvironment()->getBuild();
+        if ($type->getCreateSecurity()->isExclude($build, 'php-graphql'))
+            return Token::text('');
+        $args = array();
+        foreach ($this->getTypesPath($data, $type) as $stype) {
+            foreach ($stype->getAttributes() as $attr) {
+                if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+                    continue;
+                $args []= Token::multi(
+                    Token::text(\lcfirst($attr->getName())),
+                    Token::text(': '),
+                    Token::text($this->getGraphqlType($attr->getType())),
+                    $attr->getOptional() || $attr->hasDefault()
+                        ? Token::text('')
+                        : Token::text('!'),
+                );
+            }
+            foreach ($stype->getJoints() as $joint) {
+                if ($joint->getSecurity()->isExclude($build, 'php-graphql', false))
+                    continue;
+                $args []= Token::multi(
+                    Token::text(\lcfirst($joint->getName())),
+                    Token::text(': ID'),
+                    $joint->getRequired()
+                        ? Token::text('!')
+                        : Token::text(''),
+                );
+            }
+        }
+        return Token::multi(
+            $this->printMultiDescription(
+                Token::text('Create a new '),
+                Token::textnl($type->getName())
+            ),
+            Token::text('create'),
+            count($args) == 0
+                ? Token::text('')
+                : Token::multi(
+                    Token::text('('),
+                    Token::array($this->intersperce($args, Token::text(', '))),
+                    Token::text(')'),
+                ),
+            Token::text(': '),
+            Token::text($this->getQlTypeName($data, $type->getName())),
+            Token::textnl('!')
+        );
     }
 
     private function printSelectQueryDefList(DataDef $data, \Data\Type $type, string $paginate): Token {
