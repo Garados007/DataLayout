@@ -28,8 +28,8 @@
     <Types>
         <Type name="ObjectA" fullQuery="true">
             <Attributes>
-                <Attribute name="par1" type="uint" default="0" unique="true" />
-                <Attribute name="par2" type="uint" default="0" unique="true" />
+                <Attribute name="par1" type="uint" default="0" />
+                <Attribute name="par2" type="uint" default="0" />
                 <Attribute name="par3" type="string" default="a" optional="true" />
                 <Attribute name="json" type="json" default="[]"/>
                 <Attribute name="created" type="date" default="now" />
