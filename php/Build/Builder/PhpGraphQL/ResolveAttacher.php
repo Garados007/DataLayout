@@ -447,6 +447,7 @@ class ResolveAttacher {
                     Token::textnlpush('return $value->getId() === null'),
                     Token::textnl('? null'),
                     Token::textnlpop(': $value->get_Type() . \',\' . $value->getId();'),
+                    Token::pop(),
                     Token::textnl('}'),
                 )
                 : Token::text(''),
