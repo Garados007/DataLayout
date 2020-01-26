@@ -861,7 +861,9 @@ class TypeBuilder {
             })()
                 ? Token::multi(
                     Token::nl(),
-                    Token::textnlpush('private static function _isPathSet(&$result, array $haystack, array $needles) {'),
+                    Token::textnlpush('private static function _isPathSet(&$result, $haystack, array $needles) {'),
+                    Token::textnlpush('if (count($needles) == 0)'),
+                    Token::textnlpop('return ($result = $haystack) !== null;'),
                     Token::textnlpush('foreach ($needles as $needle) {'),
                     Token::textnlpush('if (!isset($haystack[$needle]))'),
                     Token::textnlpop('return false;'),
