@@ -37,6 +37,36 @@ class DbTableNames {
                 $type->setDbName($name);
             }
         }
+        //create contraint buckets
+        $buckets = array();
+        foreach ($data->getTypes() as $type) {
+            foreach ($type->getContraintNames($data, $data->getEnvironment()->getBuild()) as $name) {
+                $prefix = \substr($name, 0, $maxSize);
+                if (!isset($buckets[$prefix]))
+                    $buckets[$prefix] = array();
+                $buckets[$prefix] []= $name;
+            }
+        }
+        while (($key = $this->getFullKey($buckets, $maxSize)) !== null) {
+            if (strlen($key) == 0)
+                return 'it exists to many contraints to shrink their names to fit the db requirements';
+            $this->combine($buckets, \substr($key, 0, -1));
+        }
+        //set the contraint table
+        $table = array();
+        foreach ($buckets as $key => $bucket) {
+            $max = count($bucket);
+            $len = \strlen((string)$max);
+            for ($i = 0; $i < $max; ++$i) {
+                $name = $max == 1 && $key == $bucket[$i]
+                    ? $key
+                    : $key . str_pad((string)($i + 1), $len, '0', STR_PAD_LEFT);
+                $table[$bucket[$i]] = $name;
+            }
+        }
+        foreach ($data->getTypes() as $type) {
+            $type->setConstraintTable($table);
+        }
         //finish
         return null;
     }

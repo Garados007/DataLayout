@@ -19,6 +19,7 @@ class Type {
     private $deleteSecurity;
     private $defaultAttributeSecurity;
     private $defaultJointSecurity;
+    private $constraintTable = array();
     
     private function __construct() {}
 
@@ -106,6 +107,14 @@ class Type {
     
     public function getDefaultJointSecurity(): Security {
         return $this->defaultJointSecurity;
+    }
+
+    public function getConstraintTable(): array {
+        return $this->constraintTable;
+    }
+
+    public function setConstraintTable(array $constraintTable) {
+        $this->constraintTable = $constraintTable;
     }
 
     public static function loadFromXml(\SimpleXMLElement $element): ?\Data\Type {
@@ -227,8 +236,8 @@ class Type {
                             break;
                         case $attr->getType() == 'date':
                             $res []= Token::text(
-                                $attr->getDefault() == 'now'
-                                ? 'NOW'
+                                $attr->getDefault() == 'now' || !$attr->getDefault()
+                                ? 'NOW()'
                                 : 'FROM_UNIXTIME(' . $attr->getDefault() . ')'
                             );
                             break;
@@ -270,7 +279,29 @@ class Type {
         );
     }
 
+    public function getContraintNames(\Data\DataDefinition $data, \Data\Build $build): array {
+        $list = array();
+        $pre = $build->getDbPrefix();
+        if ($pre === null || $pre == '')
+            $pre = '';
+        else $pre = $pre . '_';
+        if ($this->base !== null) 
+            $list[$pre . 'FK_' . $this->getDbName()] 
+                = $pre . 'FK_' . $this->getDbName();
+        foreach ($this->links as $link)
+            $list[$pre . 'FKL_' . $this->getDbName() . '_' . $link->getName()]
+                = $pre . 'FKL_' . $this->getDbName() . '_' . $link->getName();
+        foreach ($this->joints as $joint)
+            $list[$pre . 'FKJ_' . $this->getDbName() . '_' . $joint->getName()]
+                = $pre . 'FKJ_' . $this->getDbName() . '_' . $joint->getName();
+        return $list;
+    }
+
     public function buildSqlAddForeignKeys(\Data\DataDefinition $data, \Data\Build $build): Token {
+        $pre = $build->getDbPrefix();
+        if ($pre === null || $pre == '')
+            $pre = '';
+        else $pre = $pre . '_';
         return Token::multi(
             $this->base === null
                 ? Token::text('')
@@ -279,8 +310,8 @@ class Type {
                     Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
-                    Token::text($build->getDbPrefix()),
-                    Token::textnl('_FK_ID`'),
+                    Token::text($this->constraintTable[$pre . 'FK_' . $this->getDbName()]),
+                    Token::textnl('`'),
                     Token::textnl('FOREIGN KEY (id)'),
                     Token::text('REFERENCES `'),
                     Token::text($build->getDbPrefix()),
@@ -288,15 +319,13 @@ class Type {
                     Token::textnl('`(id)'),
                     Token::textnlpop('ON DELETE CASCADE;')
                 ),
-            Token::array(array_map(function ($link) use ($build, $data) {
+            Token::array(array_map(function ($link) use ($pre, $build, $data) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
                     Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
-                    Token::text($build->getDbPrefix()),
-                    Token::text('_FK_'),
-                    Token::text($link->getName()),
+                    Token::text($this->constraintTable[$pre . 'FKL_' . $this->getDbName() . '_' . $link->getName()]),
                     Token::textnl('`'),
                     Token::text('FOREIGN KEY (`'),
                     Token::text($link->getAttribute()),
@@ -310,15 +339,13 @@ class Type {
                     Token::textnlpop('ON DELETE CASCADE;')
                 );
             }, $this->links)),
-            Token::array(array_map(function ($joint) use ($build, $data) {
+            Token::array(array_map(function ($joint) use ($pre, $build, $data) {
                 return Token::multi(
                     Token::text('ALTER TABLE `'),
                     Token::text($build->getDbPrefix() . $this->getDbName()),
                     Token::textnlpush('`'),
                     Token::text('ADD CONSTRAINT `'),
-                    Token::text($build->getDbPrefix()),
-                    Token::text('_FK_'),
-                    Token::text($joint->getName()),
+                    Token::text($this->constraintTable[$pre . 'FKJ_' . $this->getDbName() . '_' . $joint->getName()]),
                     Token::textnl('`'),
                     Token::text('FOREIGN KEY (`'),
                     Token::text($joint->getName()),

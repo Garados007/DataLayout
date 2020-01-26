@@ -32,7 +32,7 @@ class Setup {
                 '. \'', '\' . PHP_EOL', function ($str) { return \addslashes($str); }
             ),
             Token::pop(),
-            Token::textnl(')->executeAll();')
+            Token::textnl(')->flush();')
         );
     }
 }
