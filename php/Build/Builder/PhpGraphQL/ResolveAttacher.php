@@ -377,8 +377,8 @@ class ResolveAttacher {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
         $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         $table = array();
-        foreach ($data->getTypes() as $type) 
-            $table[$type->getName()] = $type->getBase();
+        foreach ($data->getTypes() as $t) 
+            $table[$t->getName()] = $t->getBase();
         $group = array($type->getName());
         if ($type->getBase() !== null)
             $group []= $type->getBase();
