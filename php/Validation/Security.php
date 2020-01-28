@@ -23,13 +23,13 @@ class Security {
             
             foreach ($type->getAttributes() as $attr) {
                 $attr->getSecurity()->setBase($type->getDefaultAttributeSecurity());
-                if (($error = $this->checkValidModes($build, $attr->getSecurity(), true)) !== null)
+                if (($error = $this->checkValidModes($build, $attr->getSecurity(), DSec::GET)) !== null)
                     return 'type ' . $type->getName() . ' attribute ' 
                         . $attr->getName() . ': ' . $error;
-                if (($error = $this->checkValidModes($build, $attr->getSecurity(), false)) !== null)
+                if (($error = $this->checkValidModes($build, $attr->getSecurity(), DSec::SET)) !== null)
                     return 'type ' . $type->getName() . ' attribute ' 
                         . $attr->getName() . ': ' . $error;
-                if (!$attr->getSecurity()->isInclude($build, 'php', false)) {
+                if (!$attr->getSecurity()->isInclude($build, 'php', DSec::SET)) {
                     if (!$attr->getOptional() && !$attr->hasDefault())
                         return 'type ' . $type->getName() . ' attribute ' 
                         . $attr->getName() . ': a required field without a default connot be excluded in php';
@@ -37,14 +37,14 @@ class Security {
             }
             foreach ($type->getJoints() as $joint) {
                 $joint->getSecurity()->setBase($type->getDefaultJointSecurity());
-                if (($error = $this->checkValidModes($build, $joint->getSecurity(), true)) !== null)
+                if (($error = $this->checkValidModes($build, $joint->getSecurity(), DSec::GET)) !== null)
                     return 'type ' . $type->getName() . ' joint ' 
                         . $joint->getName() . ': ' . $error;
-                if (($error = $this->checkValidModes($build, $joint->getSecurity(), false)) !== null)
+                if (($error = $this->checkValidModes($build, $joint->getSecurity(), DSec::SET)) !== null)
                     return 'type ' . $type->getName() . ' joint ' 
                         . $joint->getName() . ': ' . $error;
-                if (!$joint->getSecurity()->isInclude($build, 'php', false)
-                    // || !$joint->getSecurity()->isInclude($build, 'php-graphql', false)
+                if (!$joint->getSecurity()->isInclude($build, 'php', DSec::SET)
+                    // || !$joint->getSecurity()->isInclude($build, 'php-graphql', DSec::SET)
                 ) {
                     if ($joint->getRequired())
                         return 'type ' . $type->getName() . ' joint ' 
@@ -60,12 +60,16 @@ class Security {
         return null;
     }
 
-    private function checkValidModes(Build $build, DSec $sec, ?bool $get = null): ?string {
-        $php = $sec->isInclude($build, 'php', $get);
-        $phpQl = $sec->isInclude($build, 'php-graphql', $get);
+    private function checkValidModes(Build $build, DSec $sec, int $rule = DSec::ANY): ?string {
+        $php = $sec->isInclude($build, 'php', $rule);
+        $phpQl = $sec->isInclude($build, 'php-graphql', $rule);
 
-        $access = $get === null ? '' : ($get ? '(access: get) ' : '(access: set) ');
-
+        switch ($rule) {
+            case DSec::GET: $access = '(access: get) '; break;
+            case DSec::SET: $access = '(access: set) '; break;
+            case DSec::CREATE: $access = '(access: create) '; break;
+            default: $access = ''; break;
+        }
         if ($phpQl && !$php)
             return 'invalid security ' . $access . '- php-graphql requires the inclusion of php';
 

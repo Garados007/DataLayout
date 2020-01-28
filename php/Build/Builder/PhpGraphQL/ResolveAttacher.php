@@ -3,6 +3,7 @@
 use \Build\BuildConfig as Config;
 use \Build\Token as Token;
 use \Data\DataDefinition as DataDef;
+use \Data\Security;
 
 class ResolveAttacher {
     public function buildResolver(Config $config, DataDef $data): Token {
@@ -474,7 +475,7 @@ class ResolveAttacher {
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
-                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::GET))
                     return null;
                 return Token::multi(
                     Token::text('case \''),
@@ -495,7 +496,7 @@ class ResolveAttacher {
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
-                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::GET))
                     return null;
                 return Token::multi(
                     Token::text('case \''),
@@ -512,7 +513,7 @@ class ResolveAttacher {
                 foreach ($data->getTypes() as $t) 
                     foreach ($t->getJoints() as $joint)
                         if ($joint->getTarget() == $type->getName()) {
-                            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::GET))
                                 continue;
                             $result []= array(
                                 Token::text('case \'from'),
@@ -585,7 +586,7 @@ class ResolveAttacher {
                 )
                 : Token::text(''),
             Token::array(array_map(function ($attr) use ($data, $type) {
-                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+                if ($attr->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::SET))
                     return null;
                 return Token::multi(
                     Token::text('case \'set'),
@@ -635,7 +636,7 @@ class ResolveAttacher {
                 );
             }, $type->getAttributes())),
             Token::array(array_map(function ($joint) use ($data, $type) {
-                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+                if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::SET))
                     return null;
                 $value = Token::multi(
                     Token::text('(isset($args[\''),
@@ -810,7 +811,7 @@ class ResolveAttacher {
                     Token::array(array_map(function ($type) use ($build) {
                         return Token::multi(
                             Token::array(array_map(function ($attr) use ($build) {
-                                if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+                                if ($attr->getSecurity()->isExclude($build, 'php-graphql', Security::CREATE))
                                     return null;
                                 return Token::multi(
                                     !$attr->getOptional() && $attr->hasDefault()
@@ -837,7 +838,7 @@ class ResolveAttacher {
                                 );
                             }, $type->getAttributes())),
                             Token::array(array_map(function ($joint) use ($type, $build) {
-                                if ($joint->getSecurity()->isExclude($build, 'php-graphql', false))
+                                if ($joint->getSecurity()->isExclude($build, 'php-graphql', Security::CREATE))
                                     return null;
                                 $par = Token::multi(
                                     Token::text('$args[\''),

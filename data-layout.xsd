@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-05/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-04/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-05/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -700,6 +700,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="set" />
                                     <xs:enumeration value="get" />
+                                    <xs:enumeration value="create" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>
@@ -723,6 +724,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="set" />
                                     <xs:enumeration value="get" />
+                                    <xs:enumeration value="create" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>

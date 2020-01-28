@@ -4,6 +4,7 @@ use \Build\BuildConfig as Config;
 use \Build\Token as Token;
 use \Data\DataDefinition as DataDef;
 use \Data\Build;
+use \Data\Security;
 
 class GraphSchemeBuilder {
     public function buildSchema(Config $config, DataDef $data): Token {
@@ -27,15 +28,15 @@ class GraphSchemeBuilder {
                 if ($type->getDeleteSecurity()->isInclude($build, 'php-graphql'))
                     $instWrite++;
                 foreach ($type->getAttributes() as $attr) {
-                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', true))
+                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', Security::GET))
                         $instRead++;
-                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', false))
+                    if ($attr->getSecurity()->isInclude($build, 'php-graphql', Security::SET))
                         $instWrite++;
                 }
                 foreach ($type->getJoints() as $joint) {
-                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', true))
+                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', Security::GET))
                         $instRead++;
-                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', false))
+                    if ($joint->getSecurity()->isInclude($build, 'php-graphql', Security::SET))
                         $instWrite++;
                 }
                 foreach ($type->getAccess() as $query) {
@@ -48,7 +49,7 @@ class GraphSchemeBuilder {
                 foreach ($data->getTypes() as $type2)
                     foreach ($type2->getJoints() as $joint) 
                         if ($joint->getTarget() == $type->getName()) {
-                            if ($joint->getSecurity()->isInclude($build, 'php-graphql', true))
+                            if ($joint->getSecurity()->isInclude($build, 'php-graphql', Security::GET))
                                 $instRead++;
                         }
 
@@ -465,7 +466,7 @@ class GraphSchemeBuilder {
 
     private function printAttributeDefList(Build $build, array $attrs): Token {
         return Token::array(array_map(function ($attr) use ($build) {
-            if ($attr->getSecurity()->isExclude($build, 'php-graphql', true))
+            if ($attr->getSecurity()->isExclude($build, 'php-graphql', Security::GET))
                 return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
@@ -487,7 +488,7 @@ class GraphSchemeBuilder {
 
     private function printSetAttributeDefList(Build $build, array $attrs): Token {
         return Token::array(array_map(function ($attr) use ($build) {
-            if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+            if ($attr->getSecurity()->isExclude($build, 'php-graphql', Security::SET))
                 return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
@@ -517,7 +518,7 @@ class GraphSchemeBuilder {
 
     private function printJointDefList(DataDef $data, array $joints): Token {
         return Token::array(array_map(function ($joint) use ($data) {
-            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::GET))
                 return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
@@ -539,7 +540,7 @@ class GraphSchemeBuilder {
     
     private function printSetJointDefList(DataDef $data, array $joints): Token {
         return Token::array(array_map(function ($joint) use ($data) {
-            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', false))
+            if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::SET))
                 return Token::text('');
             return Token::multi(
                 $this->printMultiDescription(
@@ -571,7 +572,7 @@ class GraphSchemeBuilder {
         foreach ($data->getTypes() as $t)
             foreach ($t->getJoints() as $joint) 
                 if ($joint->getTarget() == $type->getName()) {
-                    if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', true))
+                    if ($joint->getSecurity()->isExclude($data->getEnvironment()->getBuild(), 'php-graphql', Security::GET))
                         continue;
                     $tokens []= Token::multi(
                         $this->printMultiDescription(
@@ -602,12 +603,12 @@ class GraphSchemeBuilder {
 
     private function printCreateDefList(DataDef $data, \Data\Type $type): Token {
         $build = $data->getEnvironment()->getBuild();
-        if ($type->getCreateSecurity()->isExclude($build, 'php-graphql'))
+        if ($type->getCreateSecurity()->isExclude($build, 'php-graphql', Security::CREATE))
             return Token::text('');
         $args = array();
         foreach ($this->getTypesPath($data, $type) as $stype) {
             foreach ($stype->getAttributes() as $attr) {
-                if ($attr->getSecurity()->isExclude($build, 'php-graphql', false))
+                if ($attr->getSecurity()->isExclude($build, 'php-graphql', Security::CREATE))
                     continue;
                 $args []= Token::multi(
                     Token::text(\lcfirst($attr->getName())),
@@ -619,7 +620,7 @@ class GraphSchemeBuilder {
                 );
             }
             foreach ($stype->getJoints() as $joint) {
-                if ($joint->getSecurity()->isExclude($build, 'php-graphql', false))
+                if ($joint->getSecurity()->isExclude($build, 'php-graphql', Security::CREATE))
                     continue;
                 $args []= Token::multi(
                     Token::text(\lcfirst($joint->getName())),
