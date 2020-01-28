@@ -75,11 +75,26 @@ class ResolveAttacher {
                     Token::textnlpop('throw \\Exception(\'no permission to access this object\');'),
                     Token::textnlpop('else return null;'),
                     Token::textnl('}'),
-                    Token::nl()
+                    Token::nl(),
+                    Token::textnlpush('public static function verifyMember(string $type, string $member, $arg = null, ?bool $modify = null): bool {'),
+                    Token::textnlpush('if (self::$permission === null)'),
+                    Token::textnlpop('return true;'),
+                    Token::textnl('$method = \'check\' . \\ucfirst($type) . \'__\' . \\ucfirst($member);'),
+                    Token::textnlpush('if ($arg === null)'),
+                    Token::textnlpop('return self::$permission->{$method}();'),
+                    Token::textnlpush('elseif ($modify === null)'),
+                    Token::textnlpop('return self::$permission->{$method}($arg);'),
+                    Token::textnlpop('else return self::$permission->{$method}($arg, $modify);'),
+                    Token::textnl('}'),
+                    Token::nl(),
                 )
                 : Token::multi(
                     Token::textnlpush('public static function verify($object, bool $throw = true) {'),
                     Token::textnlpop('return $object;'),
+                    Token::textnl('}'),
+                    Token::nl(),
+                    Token::textnlpush('public static function verifyMember(string $type, string $member, $arg = null, ?bool $modify = null): bool {'),
+                    Token::textnlpop('return true;'),
                     Token::textnl('}'),
                     Token::nl()
                 ),
@@ -481,6 +496,7 @@ class ResolveAttacher {
                     Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($attr->getName()))),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyMember($type, $attr->getName(), false),
                     Token::text('return '),
                     $this->buildOutputConverter(
                         $attr->getType(),
@@ -502,6 +518,7 @@ class ResolveAttacher {
                     Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($joint->getName()))),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyMember($type, $joint->getName(), false),
                     Token::text('return self::verify($value->get'),
                     Token::text(\ucfirst($joint->getName())),
                     Token::textnlpop('());'),
@@ -578,6 +595,7 @@ class ResolveAttacher {
             $type->getBase() === null && $type->getDeleteSecurity()->isInclude($data->getEnvironment()->getBuild(), 'php-graphql')
                 ? Token::multi(
                     Token::textnlpush('case \'delete\': {'),
+                    $this->getVerifyMember($type, 'delete'),
                     Token::textnlpush('if ($value->getId() === null)'),
                     Token::textnlpop('return false;'),
                     Token::textnl('else $value->delete();'),
@@ -592,6 +610,7 @@ class ResolveAttacher {
                     Token::text('case \'set'),
                     Token::text(\ucfirst(\addslashes($attr->getName()))),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyMember($type, $attr->getName(), true),
                     Token::text('$value->set'),
                     Token::text(\ucfirst($attr->getName())),
                     Token::text('('),
@@ -668,6 +687,7 @@ class ResolveAttacher {
                     Token::text('case \''),
                     Token::text(\lcfirst(\addslashes($joint->getName()))),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyMember($type, $joint->getName(), true),
                     Token::text('$value->set'),
                     Token::text(\ucfirst($joint->getName())),
                     Token::text('('),
@@ -729,6 +749,7 @@ class ResolveAttacher {
                         Token::text('case \''),
                         Token::text(\lcfirst($query->getName())),
                         Token::textnlpush('\': {'),
+                        $this->getVerifyStatic($type, $query->getName()),
                         Token::text('return self::verify('),
                         Token::text($ns),
                         Token::text($type->getName()),
@@ -743,6 +764,7 @@ class ResolveAttacher {
                     Token::text('case \''),
                     Token::text(\lcfirst($query->getName())),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyStatic($type, $query->getName()),
                     $data->getEnvironment()->getBuild()->getPagination() == 'full'
                         ? Token::multi(
                             Token::text('$result = '),
@@ -804,6 +826,12 @@ class ResolveAttacher {
                 ? Token::text('')
                 : Token::multi(
                     Token::textnlpush('case \'create\': {'),
+                    Token::multi(
+                        Token::text('if (!self::verifyMember(\''),
+                        Token::text(\lcfirst($type->getName())),
+                        Token::text('\', \'Create\', $args))'),
+                        Token::textnlpop('return null;'),
+                    ),
                     Token::text('$obj = new '),
                     Token::text($ns),
                     Token::text($type->getName()),
@@ -886,6 +914,7 @@ class ResolveAttacher {
                     Token::text('case \''),
                     Token::text(\lcfirst($query->getName())),
                     Token::textnlpush('\': {'),
+                    $this->getVerifyStatic($type, $query->getName()),
                     Token::multi(
                         Token::text($ns),
                         Token::text($type->getName()),
@@ -1096,6 +1125,30 @@ class ResolveAttacher {
             ));
             default: return $value;
         }
+    }
+
+    private function getVerifyMember(\Data\Type $type, string $member, ?bool $modify = null): Token {
+        return Token::multi(
+            Token::text('if (!self::verifyMember(\''),
+            Token::text(\lcfirst($type->getName())),
+            Token::text('\', \''),
+            Token::text(\lcfirst($member)),
+            Token::text('\', $value'),
+            Token::text($modify === null ? '' : ($modify ? ', true' : ', false')),
+            Token::textnlpush('))'),
+            Token::textnlpop('return null;'),
+        );
+    }
+
+    private function getVerifyStatic(\Data\Type $type, string $member): Token {
+        return Token::multi(
+            Token::text('if (!self::verifyMember(\''),
+            Token::text(\lcfirst($type->getName())),
+            Token::text('\', \''),
+            Token::text(\lcfirst($member)),
+            Token::textnlpush('\'))'),
+            Token::textnlpop('return null;'),
+        );
     }
 
     private function intersperce(array $array, $element): array {
