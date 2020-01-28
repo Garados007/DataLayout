@@ -7,7 +7,7 @@ use \Data\DataDefinition as DataDef;
 class PermissionBuilder {
     public function buildPermission(Config $config, DataDef $data): Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
-        $ns = $ns === null ? '' : '\\' . $ns . '\\';
+        $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         return Token::multi(
             Token::text('<?php'),
             $data->getEnvironment()->getBuild()->getClassNamespace() === null 
