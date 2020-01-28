@@ -168,6 +168,9 @@ class TypeBuilder {
                         case $attr->getType() == 'date' && $default === null:
                             $res []= Token::text('time()');
                             break;
+                        case $attr->getType() == 'date' && $default == false:
+                            $res []= Token::text('null');
+                            break;
                         case $attr->getType() == 'json':
                             $res []= Token::multi(
                                 Token::text('json_decode(\''),
@@ -1465,7 +1468,7 @@ class TypeBuilder {
             case 'string':
             case 'bytes':
                 $entry = Token::multi(
-                    Token::text('(\'\\\'\' . \\DB::encode('),
+                    Token::text('(\'\\\'\' . \\DB::escape('),
                     $entry,
                     Token::text(') . \'\\\'\')')
                 );
@@ -1479,7 +1482,7 @@ class TypeBuilder {
                 break;
             case 'json':
                 $entry = Token::multi(
-                    Token::text('(\'\\\'\' . \\DB::encode('),
+                    Token::text('(\'\\\'\' . \\DB::escape('),
                     $entry,
                     Token::text(') . \'\\\'\')')
                 );

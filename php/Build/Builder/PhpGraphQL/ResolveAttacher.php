@@ -38,8 +38,10 @@ class ResolveAttacher {
                     Token::text(''),
                 ),
             Token::textnl('\\\\Data\\\\\' . $typename}::load($id);'),
-            Token::textnlpush('foreach ($entrys as $key => $entry)'),
-            Token::textnlpop('$value->{!${\'\'} = \'set\' . \\ucfirst($key)}($entry);'),
+            Token::textnlpush('foreach ($entrys as $key => $entry) {'),
+            Token::textnl('$name = \'set\' . \\ucfirst($key);'),
+            Token::textnlpop('$value->{$name}($entry);'),
+            Token::textnl('}'),
             Token::textnlpop('$value->save();'),
             Token::textnlpop('}'),
             Token::pop(),
@@ -62,7 +64,7 @@ class ResolveAttacher {
                     Token::textnlpop('self::$permission = $permission;'),
                     Token::textnl('}'),
                     Token::nl(),
-                    Token::textnlpush('private static function verify($object, bool $throw = true) {'),
+                    Token::textnlpush('public static function verify($object, bool $throw = true) {'),
                     Token::textnlpush('if ($object === null || self::$permission === null)'),
                     Token::textnlpop('return $object;'),
                     Token::textnl('$method = \'check\' . \\ucfirst($object->get_Type());'),
@@ -75,7 +77,7 @@ class ResolveAttacher {
                     Token::nl()
                 )
                 : Token::multi(
-                    Token::textnlpush('private static function verify($object, bool $throw = true) {'),
+                    Token::textnlpush('public static function verify($object, bool $throw = true) {'),
                     Token::textnlpop('return $object;'),
                     Token::textnl('}'),
                     Token::nl()
@@ -224,7 +226,7 @@ class ResolveAttacher {
     private function buildTypeResolverInterface(DataDef $data, \Data\Type $type, bool $mutator, bool $mutate): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve'),
+            Token::text('public static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_Mutatable' : ''),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
@@ -247,7 +249,7 @@ class ResolveAttacher {
     private function buildTypeResolverType(DataDef $data, \Data\Type $type, bool $mutator, bool $mutate): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve'),
+            Token::text('public static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_Mutator' : '_Type'),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
@@ -268,7 +270,7 @@ class ResolveAttacher {
     private function buildTypeResolverStatic(DataDef $data, \Data\Type $type, bool $mutator, bool $mutate): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve'),
+            Token::text('public static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text($mutator ? '_StaticMutator' : '_Static'),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
@@ -290,7 +292,7 @@ class ResolveAttacher {
     private function buildTypePagination(DataDef $data, \Data\Type $type): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve'),
+            Token::text('public static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text('_Pagination'),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
@@ -309,7 +311,7 @@ class ResolveAttacher {
     private function buildTypeEdge(DataDef $data, \Data\Type $type): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve'),
+            Token::text('public static function resolve'),
             Token::text($this->getQlTypeName($data, $type->getName())),
             Token::text('_Edge'),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
@@ -328,7 +330,7 @@ class ResolveAttacher {
     private function buildTypePageInfo(DataDef $data): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolvePageInfo'),
+            Token::text('public static function resolvePageInfo'),
             Token::textnlpush('(array &$config, \\GraphQL\\Language\\AST\\Node $typeNode, array $typeMap): array {'),
             Token::textnlpush('$config[\'resolveField\'] = function ($value, $args, $content, $info) {'),
             Token::textnlpush('switch($info->fieldName) {'),
@@ -351,7 +353,7 @@ class ResolveAttacher {
     private function buildQuery(DataDef $data, bool $mutate): Token {
         return Token::multi(
             Token::nl(),
-            Token::text('private static function resolve_Query'),
+            Token::text('public static function resolve_Query'),
             $mutate
                 ? Token::text('Mutator')
                 : Token::text(''),
@@ -423,14 +425,34 @@ class ResolveAttacher {
                         Token::text($ns),
                         Token::text($key),
                         Token::textnlpush(':'),
-                        Token::text('return $info->schema->getType(\''),
-                        Token::text($this->getQlTypeName($data, $key)),
-                        Token::text($mutate ? '_Mutator' : '_Type'),
-                        Token::textnlpop('\');'),
+                        $mutate 
+                            ? Token::multi(
+                                Token::text('return $info->schema->getType(\''),
+                                Token::text($this->getQlTypeName($data, $key)),
+                                Token::text($mutate ? '_Mutator' : '_Type'),
+                                Token::textnlpop('\');'),
+                            )
+                            : Token::multi(
+                                Token::textnlpush('try {'),
+                                Token::text('if (isset($context[\'mutation\']) && $info->schema->hasType(\''),
+                                Token::text($this->getQlTypeName($data, $key)),
+                                Token::textnlpush('_Mutator\'))'),
+                                Token::text('return $info->schema->getType(\''),
+                                Token::text($this->getQlTypeName($data, $key)),
+                                Token::textnlpop('_Mutator\');'),
+                                Token::pop(),
+                                Token::textnl('}'),
+                                Token::textnlpush('finally {'),
+                                Token::text('return $info->schema->getType(\''),
+                                Token::text($this->getQlTypeName($data, $key)),
+                                Token::textnlpop('_Type\');'),
+                                Token::textnl('}'),
+                                Token::pop(),
+                            ),
                     );
                 }, $level));
             }, $levels)),
-            Token::pop(),
+            Token::textnlpop('default: return null;'),
             Token::textnlpop('}'),
             Token::textnl('};'),
         );
@@ -576,7 +598,7 @@ class ResolveAttacher {
                         $attr->getType(),
                         Token::multi(
                             Token::text('$args[\''),
-                            Token::text(\addslashes($attr->getName())),
+                            Token::text(\addslashes(\lcfirst($attr->getName()))),
                             Token::text('\']'),
                         ),
                         $attr->getOptional(),
@@ -617,9 +639,9 @@ class ResolveAttacher {
                     return null;
                 $value = Token::multi(
                     Token::text('(isset($args[\''),
-                    Token::text(\addslashes($joint->getName())),
+                    Token::text(\addslashes(\lcfirst($joint->getName()))),
                     Token::text('\']) ? $args[\''),
-                    Token::text(\addslashes($joint->getName())),
+                    Token::text(\addslashes(\lcfirst($joint->getName()))),
                     Token::text('\'] : null)')
                 );
                 $obj = Token::multi(
@@ -888,7 +910,7 @@ class ResolveAttacher {
         $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
         return Token::multi(
             Token::nl(),
-            Token::text('private static function idResolve'),
+            Token::text('public static function idResolve'),
             Token::text(\ucfirst($type->getName())),
             Token::text('(string $id): '),
             Token::text($ns),
@@ -931,7 +953,7 @@ class ResolveAttacher {
                                 ),
                                 Token::textnlpop(';'),
                                 Token::text('}, $args[\''),
-                                Token::text(\addslashes($name)),
+                                Token::text(\addslashes(\lcfirst($name))),
                                 Token::text('\'])')
                             );
                         else 
@@ -939,7 +961,7 @@ class ResolveAttacher {
                                 $query->getInputVarType($name), 
                                 Token::multi(
                                     Token::text('$args[\''),
-                                    Token::text(\addslashes($name)),
+                                    Token::text(\addslashes(\lcfirst($name))),
                                     Token::text('\']')
                                 ),
                                 false
@@ -953,7 +975,7 @@ class ResolveAttacher {
                                 Token::text($query->getInputObjTarget($name)),
                                 Token::textnlpop('($input);'),
                                 Token::text('}, $args[\''),
-                                Token::text(\addslashes($name)),
+                                Token::text(\addslashes(\lcfirst($name))),
                                 Token::text('\'])'),
                             );
                         else
@@ -961,7 +983,7 @@ class ResolveAttacher {
                                 Token::text('self::idResolve'),
                                 Token::text($query->getInputObjTarget($name)),
                                 Token::text('($args[\''),
-                                Token::text(\addslashes($name)),
+                                Token::text(\addslashes(\lcfirst($name))),
                                 Token::text('\'])'),
                             );
                     }, $query->getInputObjNames()),

@@ -57,7 +57,7 @@ class GraphSchemeBuilder {
                     $name => $instRead + ($mutate ? 0 : $instWrite),
                     $name . '_Mutatable' => $instWrite,
                     $name . '_Static' => $statRead + ($mutate ? 0 : $statWrite),
-                    $name . '_StaticMutator' => $statWrite,
+                    $name . '_StaticMutator' => $statRead + $statWrite,
                 );
 
                 foreach ($types as $key => $value)
@@ -81,7 +81,7 @@ class GraphSchemeBuilder {
 
                 if ($countr == 0)
                     $list[] = $name . '_Type';
-                if ($countw == 0)
+                if ($countw + $countr == 0)
                     $list[] = $name . '_Mutator';
             }
             return $list;
@@ -101,7 +101,7 @@ class GraphSchemeBuilder {
                     ? null 
                     : $name . '_Mutatable';
                 $list[$name . '_Mutator'] = 
-                    in_array($name . '_Mutatable', $emptyTypes)
+                    in_array($name . '_Mutator', $emptyTypes)
                     ? $name . '_Type'
                     : $name . '_Mutator';
                 $list[$name . '_StaticMutator'] =
