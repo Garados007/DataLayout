@@ -939,6 +939,21 @@ class ResolveAttacher {
     private function buildIdResolver(DataDef $data, \Data\Type $type) : Token {
         $ns = $data->getEnvironment()->getBuild()->getDbClassNamespace();
         $ns = $ns === null ? '\\Data\\' : '\\' . $ns . '\\Data\\';
+        $types = array();
+        foreach ($data->getTypes() as $t)
+            $types []= $t;
+        $enabled = [ $type->getName() ];
+        $done = true;
+        while ($done) {
+            $done = false;
+            foreach ($types as $t) {
+                if (in_array($t->getBase(), $enabled) 
+                    && !in_array($t->getName(), $enabled)) {
+                        $done = true;
+                        $enabled []= $t->getName();
+                    }
+            }
+        }
         return Token::multi(
             Token::nl(),
             Token::text('public static function idResolve'),
@@ -950,9 +965,21 @@ class ResolveAttacher {
             Token::textnl('$parts = explode(\',\', $id, 2);'),
             Token::textnlpush('if (count($parts) != 2)'),
             Token::textnlpop('throw new \\Exception(\'invalid id format\');'),
-            Token::text('if ($parts[0] != \''),
-            Token::text($type->getName()),
-            Token::textnlpush('\')'),
+            Token::text('if (!\\in_array($parts[0], ['),
+            Token::array($this->intersperce(
+                array_map(function($type) {
+                    return Token::multi(
+                        Token::text('\''),
+                        Token::text($type),
+                        Token::text('\''),
+                    );
+                }, $enabled),
+                Token::text(', '),
+            )),
+            Token::textnlpush(']))'),
+            // Token::text('if ($parts[0] != \''),
+            // Token::text($type->getName()),
+            // Token::textnlpush('\')'),
             Token::textnlpop('throw new \\Exception(\'unexcepted id source: \' . $parts[0]);'),
             Token::text('$obj = '),
             Token::text($ns),
