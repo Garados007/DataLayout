@@ -400,7 +400,7 @@ class TypeBuilder {
                     Token::textnlpush(' {'),
                     Token::textnl('$data = new self();'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
-                    Token::textnl('$data->_type = $entry[\'_type\'];'),
+                    Token::textnl('$data->_type = \\DB::unescape($entry[\'_type\']);'),
                     Token::array(array_map(function ($attr) {
                         $entry = Token::multi(
                             Token::text('$entry[\''),
@@ -451,7 +451,7 @@ class TypeBuilder {
                             Token::text('protected static function loadFromDbResult(array $entry): ?'),
                             Token::text($this->getRootType($data, $type)),
                             Token::textnlpush(' {'),
-                            Token::textnlpush('switch ($entry[\'_type\']) {'),
+                            Token::textnlpush('switch (\\DB::unescape($entry[\'_type\'])) {'),
                             Token::array(array_map(function ($type) use ($data) {
                                 return Token::multi(
                                     Token::text('case \''),
@@ -474,7 +474,7 @@ class TypeBuilder {
                     Token::textnlpush(' {'),
                     Token::textnl('$data = new self();'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
-                    Token::textnl('$data->_type = $entry[\'_type\'];'),
+                    Token::textnl('$data->_type = \\DB::unescape($entry[\'_type\']);'),
                     Token::array(array_map(function ($attr) use ($data, $type) {
                         $defType = $this->findAttributeType($data, $type->getName(), $attr->getName());
                         if ($defType === null) return Token::text('');
@@ -1421,7 +1421,11 @@ class TypeBuilder {
                 break;
             case 'string':
             case 'bytes':
-                $entry = Token::multi(Token::text('(string)'), $entry);
+                $entry = Token::multi(
+                    Token::text('\\DB::unescape((string)'), 
+                    $entry,
+                    Token::text(')'),
+                );
                 break;
             case 'date':
                 $entry = Token::multi(

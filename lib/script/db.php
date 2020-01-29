@@ -142,6 +142,21 @@ class DB {
 	}
 
 	/**
+	 * Unescape special excaped character from {@see escape}.
+	 * This function is needed to get characters like % or _
+	 * back to normal.
+	 * @param string $text The output from db
+	 * @return string The normal text
+	 */
+	public static function unescape(string $text): string {
+		return str_replace(
+			array('\%', '\_'),
+			array('%', '_'),
+			$text
+		);
+	}
+
+	/**
 	 * Log a query to the log file. If `DB_LOG_QUERYS` is false this
 	 * function will skipped.
 	 * @param string $source The source of this call.
