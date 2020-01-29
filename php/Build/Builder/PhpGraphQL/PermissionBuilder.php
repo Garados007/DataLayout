@@ -19,6 +19,8 @@ class PermissionBuilder {
                 ),
             Token::nl(),
             Token::array(array_map(function ($type) use ($ns) {
+                if ($type->getName() == 'Permission')
+                    return null;
                 return Token::multi(
                     Token::text('use '),
                     Token::text($ns),
@@ -34,7 +36,10 @@ class PermissionBuilder {
             Token::textnl(' */'),
             Token::text('abstract class Permission {'),
             Token::push(),
-            Token::array(array_map(function ($type) use ($config, $data) {
+            Token::array(array_map(function ($type) use ($config, $data, $ns) {
+                $name = $type->getName();
+                if ($name == 'Permission')
+                    $name = $ns . $name;
                 return Token::multi(
                     Token::nl(),
                     Token::textnl('/**'),
@@ -42,27 +47,27 @@ class PermissionBuilder {
                     Token::text($type->getName()),
                     Token::textnl(' is allowed for the current user.'),
                     Token::text(' * @param '),
-                    Token::text($type->getName()),
+                    Token::text($name),
                     Token::textnl(' $value The instance of the object'),
                     Token::textnl(' * @return bool True if the access is granted.'),
                     Token::textnl(' */'),
                     Token::text('public function check'),
                     Token::text(\ucfirst($type->getName())),
                     Token::text('('),
-                    Token::text($type->getName()),
+                    Token::text($name),
                     Token::textnlpush(' $value): bool {'),
                     Token::textnlpop('return true;'),
                     Token::textnl('}'),
                     $this->buildCreate($type->getName()),
-                    $this->buildDelete($type->getName()),
-                    Token::array(array_map(function ($attr) use ($type) {
+                    $this->buildDelete($type->getName(), $name),
+                    Token::array(array_map(function ($attr) use ($type, $name) {
                         return Token::multi(
-                            $this->buildMember($type->getName(), $attr->getName()),
+                            $this->buildMember($type->getName(), $name, $attr->getName()),
                         );
                     }, $type->getAttributes())),
-                    Token::array(array_map(function ($joint) use ($type) {
+                    Token::array(array_map(function ($joint) use ($type, $name) {
                         return Token::multi(
-                            $this->buildMember($type->getName(), $joint->getName()),
+                            $this->buildMember($type->getName(), $name, $joint->getName()),
                         );
                     }, $type->getJoints())),
                     Token::array(array_map(function ($query) use ($type) {
@@ -93,7 +98,7 @@ class PermissionBuilder {
         );
     }
     
-    private function buildDelete(string $type): Token {
+    private function buildDelete(string $type, string $nsType): Token {
         return Token::multi(
             Token::nl(),
             Token::textnl('/**'),
@@ -101,21 +106,21 @@ class PermissionBuilder {
             Token::text($type),
             Token::textnl('.'),
             Token::text(' * @param '),
-            Token::text($type),
+            Token::text($nsType),
             Token::textnl(' $value The instance of the object'),
             Token::textnl(' * @return bool True if the access is granted.'),
             Token::textnl(' */'),
             Token::text('public function check'),
             Token::text(\ucfirst($type)),
             Token::text('__Delete('),
-            Token::text($type),
+            Token::text($nsType),
             Token::textnlpush(' $value): bool {'),
             Token::textnlpop('return true;'),
             Token::textnl('}'),
         );
     }
 
-    private function buildMember(string $type, string $member): Token {
+    private function buildMember(string $type, string $nsType, string $member): Token {
         return Token::multi(
             Token::nl(),
             Token::textnl('/**'),
@@ -125,7 +130,7 @@ class PermissionBuilder {
             Token::text($type),
             Token::textnl('.'),
             Token::text(' * @param '),
-            Token::text($type),
+            Token::text($nsType),
             Token::textnl(' $value The instance of the object'),
             Token::textnl(' * @param bool $modify True if this call will modify this member'),
             Token::textnl(' * @return bool True if the access is granted.'),
@@ -135,7 +140,7 @@ class PermissionBuilder {
             Token::text('__'),
             Token::text(\ucfirst($member)),
             Token::text('('),
-            Token::text($type),
+            Token::text($nsType),
             Token::textnlpush(' $value, bool $modify): bool {'),
             Token::textnlpop('return true;'),
             Token::textnl('}'),
