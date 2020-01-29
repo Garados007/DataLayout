@@ -46,7 +46,7 @@ class TypeBuilder {
                 return Token::multi(
                     Token::text($data->getEnvironment()->getBuild()->getPublicMemberAccess()
                         ? 'public'
-                        : 'private'),
+                        : 'protected'),
                     Token::text(' $'),
                     Token::text($joint->getName()),
                     Token::textnl(';')
