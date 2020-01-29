@@ -845,7 +845,7 @@ class ResolveAttacher {
                                     !$attr->getOptional() && $attr->hasDefault()
                                         ? Token::multi(
                                             Token::text('if (isset($args[\''),
-                                            Token::text(\addslashes($attr->getName())),
+                                            Token::text(\addslashes(\lcfirst($attr->getName()))),
                                             Token::textnlpush('\']))'),
                                             Token::text('$obj->set'),
                                             Token::pop(),
@@ -857,7 +857,7 @@ class ResolveAttacher {
                                         $attr->getType(),
                                         Token::multi(
                                             Token::text('$args[\''),
-                                            Token::text(\addslashes($attr->getName())),
+                                            Token::text(\addslashes(\lcfirst($attr->getName()))),
                                             Token::text('\']')
                                         ),
                                         $attr->getOptional()
@@ -870,7 +870,7 @@ class ResolveAttacher {
                                     return null;
                                 $par = Token::multi(
                                     Token::text('$args[\''),
-                                    Token::text(\addslashes($joint->getName())),
+                                    Token::text(\addslashes(\lcfirst($joint->getName()))),
                                     Token::text('\']')
                                 );
                                 return Token::multi(
