@@ -73,7 +73,7 @@ class ResolveAttacher {
                     Token::textnlpush('if (self::$permission->{$method}($object))'),
                     Token::textnlpop('return $object;'),
                     Token::textnlpush('elseif ($throw)'),
-                    Token::textnlpop('throw \\Exception(\'no permission to access this object\');'),
+                    Token::textnlpop('throw new \\Exception(\'no permission to access this object\');'),
                     Token::textnlpop('else return null;'),
                     Token::textnl('}'),
                     Token::nl(),
