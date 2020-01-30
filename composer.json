@@ -9,7 +9,9 @@
     ],
     "description": "experimental project to simply build data access code ",
     "require": {
-        "php": "^7.3"
+        "php": "^7.3",
+        "ext-json": "*",
+        "ext-mbstring": "*"
     },
     "require-dev": {
         "webonyx/graphql-php": "^0.13.8"
