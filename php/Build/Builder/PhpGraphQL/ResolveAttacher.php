@@ -450,6 +450,9 @@ class ResolveAttacher {
                                 Token::textnlpop('\');'),
                             )
                             : Token::multi(
+                                Token::text('$schema = $info->schema->getType(\''),
+                                Token::text($this->getQlTypeName($data, $key)),
+                                Token::textnl('_Type\');'),
                                 Token::textnlpush('try {'),
                                 Token::text('if (isset($context[\'mutation\']) && $info->schema->hasType(\''),
                                 Token::text($this->getQlTypeName($data, $key)),
@@ -459,12 +462,8 @@ class ResolveAttacher {
                                 Token::textnlpop('_Mutator\');'),
                                 Token::pop(),
                                 Token::textnl('}'),
-                                Token::textnlpush('finally {'),
-                                Token::text('return $info->schema->getType(\''),
-                                Token::text($this->getQlTypeName($data, $key)),
-                                Token::textnlpop('_Type\');'),
-                                Token::textnl('}'),
-                                Token::pop(),
+                                Token::textnl('finally {}'),
+                                Token::textnlpop('return $schema;'),
                             ),
                     );
                 }, $level));
