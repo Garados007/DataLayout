@@ -12,6 +12,8 @@ abstract class BuildManager {
                 return new \Build\Builder\Php\BuildManager($config);
             case 'php-graphql':
                 return new \Build\Builder\PhpGraphQL\BuildManager($config);
+            case 'elm':
+                return new \Build\Builder\Elm\BuildManager($config);
             default:
                 return null;
         }

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-05/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-06/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-05/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-06/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -206,6 +206,23 @@
                                             all the mutation methods will be also executable as querys.
                                         </xs:documentation>
                                     </xs:annotation>
+                                </xs:attribute>
+                            </xs:complexType>
+                        </xs:element>
+                        <xs:element name="Elm" minOccurs="0" maxOccurs="1">
+                            <xs:complexType>
+                                <xs:attribute name="supported" type="xs:boolean" default="true" />
+                                <xs:attribute name="namespace" default="Data">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            The elm namespace of the result module.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
                                 </xs:attribute>
                             </xs:complexType>
                         </xs:element>
@@ -656,6 +673,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="php" />
                                     <xs:enumeration value="php-graphql" />
+                                    <xs:enumeration value="elm" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>
@@ -670,6 +688,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="php" />
                                     <xs:enumeration value="php-graphql" />
+                                    <xs:enumeration value="elm" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>
@@ -691,6 +710,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="php" />
                                     <xs:enumeration value="php-graphql" />
+                                    <xs:enumeration value="elm" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>
@@ -715,6 +735,7 @@
                                     <xs:enumeration value="any" />
                                     <xs:enumeration value="php" />
                                     <xs:enumeration value="php-graphql" />
+                                    <xs:enumeration value="elm" />
                                 </xs:restriction>
                             </xs:simpleType>
                         </xs:attribute>

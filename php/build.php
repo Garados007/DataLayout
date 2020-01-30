@@ -78,6 +78,7 @@ else require_once __DIR__ . '/../../../autoload.php';
     }
 
     echo 'Prepare builder:' . PHP_EOL;
+    echo '  Builder:              ' . $config->buildMode . PHP_EOL;
     echo '  Profile:              ' . ($profile ?: 'default') . PHP_EOL;
     echo '  Type definition file: ' . \Build\BuildManager::preparePath($file) . PHP_EOL;
     echo '  Output root dir:      ' . \Build\BuildManager::preparePath($config->outputRoot) . PHP_EOL;

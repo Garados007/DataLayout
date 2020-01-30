@@ -52,6 +52,9 @@ class Build {
             case 'php-graphql':
                 $build = PHPGraphqlBuild::loadFromXml($element);
                 break;
+            case 'elm':
+                $build = ElmBuild::loadFromXml($element);
+                break;
             default:
                 throw new \Exception('build mode ' . self::$buildMode . ' is not supported');
         }
@@ -264,6 +267,40 @@ class PhpGraphqlBuild extends Build {
                 FILTER_VALIDATE_BOOLEAN
             );
 
+        return $build;
+    }
+}
+
+class ElmBuild extends Build {
+    private $namespace;
+
+    public function getNamespace(): string {
+        return $this->namespace;
+    }
+
+    public static function empty(): Build {
+        $build = new ElmBuild();
+        $build->supported = true;
+        $build->namespace = 'Data';
+        return $build;
+    }
+
+    public static function loadFromXml(\SimpleXMLElement $element): ?Build {
+        if ($element->getName() != "Build")
+            return null;
+
+        $build = self::empty();
+        if (!isset($element->Elm))
+            return $build;
+        
+        if (isset($element->Elm->attributes()->supported))
+            $build->supported = filter_var(
+                (string)$element->PHP->attributes()->supported,
+                FILTER_VALIDATE_BOOLEAN
+            );
+        if (isset($element->Elm->attributes()->namespace))
+            $build->namespace = (string)$element->Elm->attributes()->namespace;
+        
         return $build;
     }
 }
