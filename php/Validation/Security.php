@@ -30,7 +30,10 @@ class Security {
                     return 'type ' . $type->getName() . ' attribute ' 
                         . $attr->getName() . ': ' . $error;
                 if (!$attr->getSecurity()->isInclude($build, 'php', DSec::SET)) {
-                    if (!$attr->getOptional() && !$attr->hasDefault())
+                    if (!$attr->getOptional() && !$attr->hasDefault() &&
+                        ($attr->getSecurity()->isInclude($build, 'php', DSec::GET)
+                            && $attr->getSecurity()->isInclude($build, 'php', DSec::CREATE)
+                        ))
                         return 'type ' . $type->getName() . ' attribute ' 
                         . $attr->getName() . ': a required field without a default connot be excluded in php';
                 }

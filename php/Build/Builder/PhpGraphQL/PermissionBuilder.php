@@ -40,6 +40,7 @@ class PermissionBuilder {
                 $name = $type->getName();
                 if ($name == 'Permission')
                     $name = $ns . $name;
+                $build = $data->getEnvironment()->getBuild();
                 return Token::multi(
                     Token::nl(),
                     Token::textnl('/**'),
@@ -60,12 +61,16 @@ class PermissionBuilder {
                     Token::textnl('}'),
                     $this->buildCreate($type->getName()),
                     $this->buildDelete($type->getName(), $name),
-                    Token::array(array_map(function ($attr) use ($type, $name) {
+                    Token::array(array_map(function ($attr) use ($type, $name, $build) {
+                        if ($attr->getSecurity()->isExclude($build, 'php-graphql'))
+                            return null;
                         return Token::multi(
                             $this->buildMember($type->getName(), $name, $attr->getName()),
                         );
                     }, $type->getAttributes())),
-                    Token::array(array_map(function ($joint) use ($type, $name) {
+                    Token::array(array_map(function ($joint) use ($type, $name, $build) {
+                        if ($joint->getSecurity()->isExclude($build, 'php-graphql'))
+                            return null;
                         return Token::multi(
                             $this->buildMember($type->getName(), $name, $joint->getName()),
                         );

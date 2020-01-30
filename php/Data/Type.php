@@ -200,7 +200,9 @@ class Type {
                     Token::text(', `_type` TEXT NOT NULL'),
                 )
                 : Token::text(''),
-            Token::array(array_map(function ($attr) {
+            Token::array(array_map(function ($attr) use ($build) {
+                if ($attr->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 $res = array();
                 $res []= Token::nl();
                 $res []= Token::text(', `');
@@ -263,7 +265,9 @@ class Type {
                 }
                 return $res;
             }, $this->attributes)),
-            Token::array(array_map(function ($joint) {
+            Token::array(array_map(function ($joint) use ($build) {
+                if ($joint->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 $res = array();
                 $res []= Token::nl();
                 $res []= Token::text(', `');

@@ -18,7 +18,11 @@ class FullQuery {
                 continue;
             $fq = $fullQuery ?: $type->getFullQuery();
             if (!$fq) continue;
-            $bucket = new \Data\TypeBucket($type, $data->getTypes());
+            $bucket = new \Data\TypeBucket(
+                $data->getEnvironment()->getBuild(), 
+                $type, 
+                $data->getTypes()
+            );
             foreach ($bucket->getTypes() as $t)
                 $t->setBucket($bucket);
         }

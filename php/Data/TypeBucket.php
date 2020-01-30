@@ -4,12 +4,12 @@ class TypeBucket {
     private $types;
     private $param;
 
-    public function __construct(Type $type, array $types) {
+    public function __construct(Build $build, Type $type, array $types) {
         $this->types = array();
         $this->param = array();
 
         $used = array();
-        $this->loadType($type);
+        $this->loadType($build, $type);
         $used []= $type->getName();
 
         $modified = true;
@@ -19,7 +19,7 @@ class TypeBucket {
                 if (in_array($t->getName(), $used))
                     continue;
                 if ($t->getBase() !== null && \in_array($t->getBase(), $used)) {
-                    $this->loadType($t);
+                    $this->loadType($build, $t);
                     $used []= $t->getName();
                     $modified = true;
                 }
@@ -27,9 +27,11 @@ class TypeBucket {
         }
     }
 
-    private function loadType(Type $type) {
+    private function loadType(Build $build, Type $type) {
         $this->types []= $type;
         foreach ($type->getAttributes() as $attr) {
+            if ($attr->getSecurity()->isExclude($build, Build::getBuildMode()))
+                continue;
             $name = 'c' . (string)count($this->param);
             $this->param[$name] = array(
                 'name' => $name,
@@ -40,6 +42,8 @@ class TypeBucket {
             );
         }
         foreach ($type->getJoints() as $joint) {
+            if ($joint->getSecurity()->isExclude($build, Build::getBuildMode()))
+                continue;
             $name = 'c' . (string)count($this->param);
             $this->param[$name] = array(
                 'name' => $name,

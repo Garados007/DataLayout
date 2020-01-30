@@ -6,6 +6,7 @@ use \Data\DataDefinition as DataDef;
 
 class TypeBuilder {
     public function buildTypeCode(Config $config, DataDef $data, \Data\Type $type): Token {
+        $build = $data->getEnvironment()->getBuild();
         return Token::multi(
             Token::text('<?php namespace '),
             Token::text(substr($data->getEnvironment()->getBuild()->getClassNamespace(), 1)),
@@ -32,7 +33,9 @@ class TypeBuilder {
                     Token::textnl('protected $_type;'),
                 )
                 : Token::text(''),
-            Token::array(array_map(function ($attr) use ($config, $data, $type) {
+            Token::array(array_map(function ($attr) use ($config, $data, $type, $build) {
+                if ($attr->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 return Token::multi(
                     Token::text($data->getEnvironment()->getBuild()->getPublicMemberAccess()
                         ? 'public'
@@ -42,7 +45,9 @@ class TypeBuilder {
                     Token::textnl(';')
                 );
             }, $type->getAttributes())),
-            Token::array(array_map(function ($joint) use ($config, $data, $type) {
+            Token::array(array_map(function ($joint) use ($config, $data, $type, $build) {
+                if ($joint->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 return Token::multi(
                     Token::text($data->getEnvironment()->getBuild()->getPublicMemberAccess()
                         ? 'public'
@@ -66,7 +71,9 @@ class TypeBuilder {
                     Token::nl(),
                 )
                 : Token::text(''),
-            Token::array(array_map(function ($attr) {
+            Token::array(array_map(function ($attr) use ($build) {
+                if ($attr->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 $type = self::getPhpTypeName($attr->getType(), $attr->getOptional());
                 return Token::multi(
                     Token::text('public function get'),
@@ -98,7 +105,9 @@ class TypeBuilder {
                     Token::nl()
                 );
             }, $type->getAttributes())),
-            Token::array(array_map(function ($joint) use ($data) {
+            Token::array(array_map(function ($joint) use ($data, $build) {
+                if ($joint->getSecurity()->isExclude($build, 'php'))
+                    return null;
                 return Token::multi(
                     Token::text('public function get'),
                     Token::text(ucfirst($joint->getName())),
@@ -158,7 +167,9 @@ class TypeBuilder {
                 Token::text('$this->_type = \''),
                 Token::text(addslashes($type->getName())),
                 Token::textnl('\';'),
-                Token::array(array_map(function ($attr) use ($config, $data, $type) {
+                Token::array(array_map(function ($attr) use ($config, $data, $type, $build) {
+                    if ($attr->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     $default = $attr->getDefault();
                     $res = array();
                     $res []= Token::text('$this->');
@@ -198,7 +209,9 @@ class TypeBuilder {
                     $res []= Token::textnl(';');
                     return $res;
                 }, $type->getAttributes())),
-                Token::array(array_map(function ($joint) use ($config, $data, $type) {
+                Token::array(array_map(function ($joint) use ($config, $data, $type, $build) {
+                    if ($joint->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     return Token::multi(
                         Token::text('$this->'),
                         Token::text($joint->getName()),
@@ -295,7 +308,9 @@ class TypeBuilder {
                         Token::textnlpush('array('),
                         Token::text('\'id\' => $this->id'),
                     ),
-                Token::array(array_map(function ($attr) {
+                Token::array(array_map(function ($attr) use ($build) {
+                    if ($attr->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     $data = Token::multi(
                         Token::text('$this->'),
                         Token::text($attr->getName())
@@ -319,7 +334,9 @@ class TypeBuilder {
                         $data
                     );
                 }, $type->getAttributes())),
-                Token::array(array_map(function ($joint) {
+                Token::array(array_map(function ($joint) use ($build) {
+                    if ($joint->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     return Token::multi(
                         Token::textnl(','),
                         Token::text('\''),
@@ -343,7 +360,9 @@ class TypeBuilder {
                         Token::textnl('$this->_type = $data[\'_type\'];'),
                     )
                     : Token::textnl('parent::deserialize($data);'),
-                Token::array(array_map(function ($attr) {
+                Token::array(array_map(function ($attr) use ($build) {
+                    if ($attr->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     $data = Token::multi(
                         Token::text('$data[\''),
                         Token::text(\addslashes($attr->getName())),
@@ -366,7 +385,9 @@ class TypeBuilder {
                         Token::textnl(';')
                     );
                 }, $type->getAttributes())),
-                Token::array(array_map(function ($joint) {
+                Token::array(array_map(function ($joint) use ($build) {
+                    if ($joint->getSecurity()->isExclude($build, 'php'))
+                        return null;
                     return Token::multi(
                         Token::text('$this->'),
                         Token::text($joint->getName()),
@@ -401,7 +422,9 @@ class TypeBuilder {
                     Token::textnl('$data = new self();'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
                     Token::textnl('$data->_type = \\DB::unescape($entry[\'_type\']);'),
-                    Token::array(array_map(function ($attr) {
+                    Token::array(array_map(function ($attr) use ($build) {
+                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         $entry = Token::multi(
                             Token::text('$entry[\''),
                             Token::text(\addslashes($attr->getName())),
@@ -423,7 +446,9 @@ class TypeBuilder {
                             Token::textnl(';')
                         );
                     }, $this->getFlatAttributes($data, $type))),
-                    Token::array(array_map(function ($joint) {
+                    Token::array(array_map(function ($joint) use ($build) {
+                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         return Token::multi(
                             Token::text('$data->'),
                             Token::text($joint->getName()),
@@ -475,7 +500,9 @@ class TypeBuilder {
                     Token::textnl('$data = new self();'),
                     Token::textnl('$data->id = (int)$entry[\'id\'];'),
                     Token::textnl('$data->_type = \\DB::unescape($entry[\'_type\']);'),
-                    Token::array(array_map(function ($attr) use ($data, $type) {
+                    Token::array(array_map(function ($attr) use ($data, $type, $build) {
+                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         $defType = $this->findAttributeType($data, $type->getName(), $attr->getName());
                         if ($defType === null) return Token::text('');
                         $bucketEntry = $type->getBucket()->getFromAttribute($defType, $attr->getName());
@@ -500,7 +527,9 @@ class TypeBuilder {
                             Token::textnl(';')
                         );
                     }, $this->getFlatAttributes($data, $type))),
-                    Token::array(array_map(function ($joint) use ($data, $type) {
+                    Token::array(array_map(function ($joint) use ($data, $type, $build) {
+                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         $defType = $this->findJointType($data, $type->getName(), $joint->getName());
                         if ($defType === null) return Token::text('');
                         $bucketEntry = $type->getBucket()->getFromJoint($defType, $joint->getName());
@@ -540,7 +569,9 @@ class TypeBuilder {
                 Token::multi(
                     Token::textnl('//add to db'),
                     Token::textnl('$__type = \'\\\'\' . \\DB::escape($this->_type) . \'\\\'\';'),
-                    Token::array(array_map(function ($attr) {
+                    Token::array(array_map(function ($attr) use ($build) {
+                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         $res = array();
                         $res []= Token::text('$_');
                         $res []= Token::text($attr->getName());
@@ -606,7 +637,9 @@ class TypeBuilder {
                         $res []= Token::textnl(';');
                         return $res;
                     }, $type->getAttributes())),
-                    Token::array(array_map(function ($joint) {
+                    Token::array(array_map(function ($joint) use ($build) {
+                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                            return null;
                         return Token::multi(
                             Token::text('$_'),
                             Token::text($joint->getName()),
@@ -631,14 +664,18 @@ class TypeBuilder {
                                 Token::textnlpush('`'),
                                 Token::text('(`_type`'),
                                 Token::array(array_merge(
-                                    array_map(function ($attr) {
+                                    array_map(function ($attr) use ($build) {
+                                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', `'),
                                             Token::text($attr->getName()),
                                             Token::text('`')
                                         );
                                     }, $type->getAttributes()),
-                                    array_map(function ($joint) {
+                                    array_map(function ($joint) use ($build) {
+                                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', `'),
                                             Token::text($joint->getName()),
@@ -649,14 +686,18 @@ class TypeBuilder {
                                 Token::textnlpop(')'),
                                 Token::text('VALUES (${__type}'),
                                 Token::array(array_merge(
-                                    array_map(function ($attr) {
+                                    array_map(function ($attr) use ($build) {
+                                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', ${_'),
                                             Token::text($attr->getName()),
                                             Token::text('}')
                                         );
                                     }, $type->getAttributes()),
-                                    array_map(function ($joint) {
+                                    array_map(function ($joint) use ($build) {
+                                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', ${_'),
                                             Token::text($joint->getName()),
@@ -686,14 +727,18 @@ class TypeBuilder {
                                 Token::textnlpush('`'),
                                 Token::text('(id'),
                                 Token::array(array_merge(
-                                    array_map(function ($attr) {
+                                    array_map(function ($attr) use ($build) {
+                                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', `'),
                                             Token::text($attr->getName()),
                                             Token::text('`')
                                         );
                                     }, $type->getAttributes()),
-                                    array_map(function ($joint) {
+                                    array_map(function ($joint) use ($build) {
+                                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', `'),
                                             Token::text($joint->getName()),
@@ -704,14 +749,18 @@ class TypeBuilder {
                                 Token::textnlpop(')'),
                                 Token::text('VALUES (${_id}'),
                                 Token::array(array_merge(
-                                    array_map(function ($attr) {
+                                    array_map(function ($attr) use ($build) {
+                                        if ($attr->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', ${_'),
                                             Token::text($attr->getName()),
                                             Token::text('}')
                                         );
                                     }, $type->getAttributes()),
-                                    array_map(function ($joint) {
+                                    array_map(function ($joint) use ($build) {
+                                        if ($joint->getSecurity()->isExclude($build, 'php'))
+                                            return null;
                                         return Token::multi(
                                             Token::text(', ${_'),
                                             Token::text($joint->getName()),
@@ -752,14 +801,18 @@ class TypeBuilder {
                     Token::textnlpush('foreach ($diff as $key => $value) {'),
                     Token::text('if (!in_array($key, [\'_type\''),
                     Token::array(array_merge(
-                        array_map(function ($attr) {
+                        array_map(function ($attr) use ($build) {
+                            if ($attr->getSecurity()->isExclude($build, 'php'))
+                                return null;
                             return Token::multi(
                                 Token::text(', \''),
                                 Token::text(addslashes($attr->getName())),
                                 Token::text('\'')
                             );
                         }, $type->getAttributes()),
-                        array_map(function ($joint) {
+                        array_map(function ($joint) use ($build) {
+                            if ($joint->getSecurity()->isExclude($build, 'php'))
+                                return null;
                             return Token::multi(
                                 Token::text(', \''),
                                 Token::text(addslashes($joint->getName())),
@@ -1585,14 +1638,17 @@ class TypeBuilder {
     }
 
     private function getFlatVariableNames(DataDef $data, \Data\Type $type): array {
+        $build = $data->getEnvironment()->getBuild();
         $base = $type->getBase() === null 
             ? null 
             : $data->getType($type->getBase());
         $result = $base === null ? array() : $this->getFlatVariableNames($data, $base);
         foreach ($type->getAttributes() as $attr)
-            $result []= $attr->getName();
+            if ($attr->getSecurity()->isInclude($build, 'php'))
+                $result []= $attr->getName();
         foreach ($type->getJoints() as $joint)
-            $result []= $joint->getName();
+            if ($joint->getSecurity()->isInclude($build, 'php'))
+                $result []= $joint->getName();
         return $result;
     }
 

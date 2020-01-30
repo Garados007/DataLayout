@@ -24,9 +24,9 @@ class Security {
             return $this->builds[$buildMode][$rule];
         if (isset($this->builds[$buildMode][self::ANY]))
             return $this->builds[$buildMode][self::ANY];
-        if ($this->default[$rule] !== null)
+        if (isset($this->default[$rule]))
             return $this->default[$rule];
-        if ($this->default[self::ANY] !== null)
+        if (isset($this->default[self::ANY]))
             return $this->default[self::ANY];
         if ($this->base !== null)
             return $this->base->isInclude($build, $buildMode, $rule);
