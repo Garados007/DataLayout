@@ -6,6 +6,7 @@ class BuildManager extends \Build\BuildManager {
 
     public function build() {
         $this->buildTypes();
+        $this->buildUtils();
     }
 
     protected function buildTypes() {
@@ -22,5 +23,23 @@ class BuildManager extends \Build\BuildManager {
         if (!is_dir($dir))
             mkdir($dir, 0777, true);
         $this->output($token, $path);
+    }
+
+    protected function buildUtils() {
+        if ($this->data->getEnvironment()->getBuild()->getGraphQL() !== null) {
+            $builder = new \Build\Builder\Elm\GraphQLUtil();
+            $token = $builder->buildUtilCode($this->config, $this->data);
+            $path = $this->config->outputRoot
+                 . '/'
+                . str_replace(
+                    '.',
+                    '/',
+                    $this->data->getEnvironment()->getBuild()->getGraphQL()
+                ) . '.elm';
+            $dir = dirname($path);
+            if (!is_dir($dir))
+                mkdir($dir, 0777, true);
+            $this->output($token, $path);
+        }
     }
 }

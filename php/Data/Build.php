@@ -273,15 +273,30 @@ class PhpGraphqlBuild extends Build {
 
 class ElmBuild extends Build {
     private $namespace;
+    private $container;
+    private $graphlql;
 
     public function getNamespace(): string {
         return $this->namespace;
+    }
+
+    public function getContainer(): ?string {
+        return $this->container == ''
+            ? null 
+            : $this->container;
+    }
+
+    public function getGraphQL(): ?string {
+        return $this->graphql == ''
+            ? null 
+            : $this->graphql;
     }
 
     public static function empty(): Build {
         $build = new ElmBuild();
         $build->supported = true;
         $build->namespace = 'Data';
+        $build->container = '';
         return $build;
     }
 
@@ -300,7 +315,11 @@ class ElmBuild extends Build {
             );
         if (isset($element->Elm->attributes()->namespace))
             $build->namespace = (string)$element->Elm->attributes()->namespace;
-        
+        if (isset($element->Elm->attributes()->container))
+            $build->container = (string)$element->Elm->attributes()->container;
+        if (isset($element->Elm->attributes()->graphql))
+            $build->graphql = (string)$element->Elm->attributes()->graphql;
+
         return $build;
     }
 }
