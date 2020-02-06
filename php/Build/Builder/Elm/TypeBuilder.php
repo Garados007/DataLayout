@@ -26,7 +26,8 @@ class TypeBuilder {
                                     Token::text(')')
                                 );
                             $args []= Token::multi(
-                                Token::text('Dict.Dict '),
+                                Token::text($this->getDict($query->getInputVarType($name))),
+                                Token::text('.Dict '),
                                 $t,
                             );
                         }
@@ -153,7 +154,10 @@ class TypeBuilder {
                                                 Token::text(\ucfirst($other->getName())),
                                                 Token::text(\ucfirst($joint->getName())),
                                                 Token::text(': Maybe (ApiIterator '),
-                                                Token::text(\ucfirst($other->getName())),
+                                                Token::text(\ucfirst($this->getRootType(
+                                                    $data,
+                                                    $other->getName(),
+                                                ))),
                                                 Token::text('Id)'),
                                             );
                                         }
@@ -253,7 +257,7 @@ class TypeBuilder {
             Token::textnl('import AssocList'),
             Token::nl(),
             Token::textnlpush('type alias ApiIterator id ='),
-            Token::textnl('{ last: Maybe id'),
+            Token::textnl('{ last: Maybe String'),
             Token::textnl(', list: List id'),
             Token::textnl(', more: Bool'),
             Token::textnlpop('}'),
@@ -355,7 +359,10 @@ class TypeBuilder {
                                                 return null;
                                             $type = null;
                                             foreach ($query->getInputVarNames() as $name) {
-                                                $type = Token::text('Dict.empty');
+                                                $type = Token::multi(
+                                                    Token::text($this->getDict($query->getInputVarType($name))),
+                                                    Token::text('.empty'),
+                                                );
                                                 break;
                                             }
                                             if ($type === null)
@@ -460,6 +467,30 @@ class TypeBuilder {
                 $token
             );
         else return $token;
+    }
+    
+    private static function getDict(string $type): string { 
+        switch ($type) {
+            case 'bool': 
+            case 'byte':
+            case 'short':
+            case 'int':
+            case 'long':
+            case 'sbyte':
+            case 'ushort':
+            case 'uint':
+            case 'ulong':
+            case 'float':
+            case 'double':
+            case 'string':
+            case 'bytes':
+                return 'Dict';
+            case 'date':
+            case 'json':
+                return 'AssocList';
+            default:
+                return 'Dict';
+        }
     }
 
     private static function intersperce(array $array, $element): array {

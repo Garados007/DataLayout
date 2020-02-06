@@ -275,6 +275,7 @@ class ElmBuild extends Build {
     private $namespace;
     private $container;
     private $graphlql;
+    private $graphlqlRequest;
 
     public function getNamespace(): string {
         return $this->namespace;
@@ -290,6 +291,14 @@ class ElmBuild extends Build {
         return $this->graphql == ''
             ? null 
             : $this->graphql;
+    }
+
+    public function getGraphQLRequest(): ?string {
+        if ($this->getGraphQL() === null)
+            return null;
+        return $this->graphqlRequest == ''
+            ? null 
+            : $this->graphqlRequest;
     }
 
     public static function empty(): Build {
@@ -319,6 +328,8 @@ class ElmBuild extends Build {
             $build->container = (string)$element->Elm->attributes()->container;
         if (isset($element->Elm->attributes()->graphql))
             $build->graphql = (string)$element->Elm->attributes()->graphql;
+        if (isset($element->Elm->attributes()->{'graphql-request'}))
+            $build->graphqlRequest = (string)$element->Elm->attributes()->{'graphql-request'};
 
         return $build;
     }

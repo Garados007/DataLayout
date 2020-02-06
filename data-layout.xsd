@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-07/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-08/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-07/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-08/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -246,6 +246,27 @@
                                             module name here.
                                         </xs:documentation>
                                     </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="graphql-request" default="">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            If you wish to generate a GraphQL util file for easier management
+                                            if the GraphQL library with the types you can set the full 
+                                            module name here. This will create light request wrapper over 
+                                            the GraphQL Api. If the attribute graphql is empty this attribute
+                                            will be ignored.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
                                 </xs:attribute>
                             </xs:complexType>
                         </xs:element>
