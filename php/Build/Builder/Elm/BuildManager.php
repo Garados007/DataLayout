@@ -8,6 +8,7 @@ class BuildManager extends \Build\BuildManager {
         $this->buildTypes();
         $this->buildUtils();
         $this->buildRequestUtils();
+        $this->buildMutate();
     }
 
     protected function buildTypes() {
@@ -54,6 +55,24 @@ class BuildManager extends \Build\BuildManager {
                     '.',
                     '/',
                     $this->data->getEnvironment()->getBuild()->getGraphQLRequest()
+                ) . '.elm';
+            $dir = dirname($path);
+            if (!is_dir($dir))
+                mkdir($dir, 0777, true);
+            $this->output($token, $path);
+        }
+    }
+    
+    protected function buildMutate() {
+        if ($this->data->getEnvironment()->getBuild()->getGraphQLMutate() !== null) {
+            $builder = new \Build\Builder\Elm\GraphQLMutate();
+            $token = $builder->buildUtilCode($this->config, $this->data);
+            $path = $this->config->outputRoot
+                 . '/'
+                . str_replace(
+                    '.',
+                    '/',
+                    $this->data->getEnvironment()->getBuild()->getGraphQLMutate()
                 ) . '.elm';
             $dir = dirname($path);
             if (!is_dir($dir))

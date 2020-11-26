@@ -16,24 +16,47 @@ class GraphQLRequest {
             Token::textnl(', applyResponse'),
             Token::array(array_map(function ($type) use ($data) {
                 $build = $data->getEnvironment()->getBuild();
+                $baseTypes = $this->getBaseTypes($type, $data);
                 return Token::multi(
                     Token::text(', type'),
                     Token::textnl(\ucfirst($type->getName())),
-                    (function () use ($type, $build, $data) {
+                    Token::array(
+                        array_map(function ($joint) use ($type, $build) {
+                            if ($joint->getSecurity()->isExclude($build, 'elm'))
+                                return null;
+                            return Token::multi(
+                                Token::text(', joint'),
+                                Token::text(\ucfirst($type->getName())),
+                                Token::textnl(\ucfirst($joint->getName())),
+                            );
+                        }, $type->getJoints())
+                    ),
+                    (function () use ($type, $baseTypes, $build, $data) {
                         $result = array();
                         foreach ($data->getTypes() as $other) 
                             foreach ($other->getJoints() as $joint) 
-                                if ($joint->getTarget() == $type->getName()) {
+                                if (\in_array($joint->getTarget(), $baseTypes)) {
                                     if ($joint->getSecurity()->isExclude($build, 'elm'))
                                         continue;
+                                    $suffix = $joint->getTarget() == $type->getName()
+                                        ? Token::nl()
+                                        : Token::multi(
+                                            Token::text('At'),
+                                            Token::textnl(\ucfirst($type->getName())),
+                                        );
                                     $result []= Token::multi(
                                         Token::text(', from'),
                                         Token::text(\ucfirst($other->getName())),
-                                        Token::textnl(\ucfirst($joint->getName())),
-                                        Token::text(', list'),
-                                        Token::text(\ucfirst($other->getName())),
-                                        Token::textnl(\ucfirst($joint->getName())),
+                                        Token::text(\ucfirst($joint->getName())),
+                                        $suffix,
                                     );
+                                    if ($build->getGraphQLNode() !== null)
+                                        $result []= Token::multi(
+                                            Token::text(', continueFrom'),
+                                            Token::text(\ucfirst($other->getName())),
+                                            Token::text(\ucfirst($joint->getName())),
+                                            $suffix,
+                                        );
                                 }
                         return Token::array($result);
                     })(),
@@ -48,6 +71,13 @@ class GraphQLRequest {
                             Token::text(', query'),
                             Token::text(\ucfirst($type->getName())),
                             Token::textnl(\ucfirst($query->getName())),
+                            $build->getGraphQLNode() === null || $query->isLimitFirst()
+                                ? Token::text('')
+                                : Token::multi(
+                                    Token::text(', continueQuery'),
+                                    Token::text(\ucfirst($type->getName())),
+                                    Token::textnl(\ucfirst($query->getName())),
+                                ),
                         );
                     }, $type->getAccess())),
                     Token::text(', load'),
@@ -64,8 +94,8 @@ class GraphQLRequest {
             Token::textnl(' as Decoder'),
             Token::textnl('import Api.Interface'),
             Token::array(array_map(function ($type) {
-                if ($type->getBase() !== null)
-                    return null;
+                // if ($type->getBase() !== null)
+                //     return null;
                 return Token::multi(
                     Token::text('import Api.Interface.'),
                     Token::text(\ucfirst($type->getName())),
@@ -91,13 +121,39 @@ class GraphQLRequest {
                     Token::text('_Static as Api'),
                     Token::text(\ucfirst($type->getName())),
                     Token::textnl('_Static'),
+                    $type->getBase() !== null
+                        ? Token::multi(
+                            Token::text('import Api.Object.'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text('_Mutator as Api'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::textnl('_Mutator'),
+                            Token::text('import Api.Object.'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text('_Type as Api'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::textnl('_Type'),
+                        )
+                        : Token::text(''),
                 );
             }, $data->getTypes())),
             Token::textnl('import Api.Object.PageInfo'),
+            Token::array(array_map(function ($entry) {
+                if ($entry['root'])
+                    return null;
+                return Token::multi(
+                    Token::text('import Api.Object.'),
+                    Token::textnl(\ucfirst($entry['type'])),
+                );
+            }, $data->getEnvironment()->getBuild()->getGraphQLNode() ?: array())),
+            $data->getEnvironment()->getBuild()->getGraphQLNode() === null 
+                ? Token::text('')
+                : Token::textnl('import Api.Query'),
             Token::textnl('import Api.Scalar'),
             Token::textnl('import AssocList'),
             Token::textnl('import Dict'),
             Token::textnl('import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)'),
+            Token::textnl('import Graphql.Operation exposing (RootQuery)'),
             Token::textnl('import Graphql.OptionalArgument exposing (OptionalArgument (..))'),
             Token::textnl('import Iso8601'),
             Token::textnl('import Json.Decode'),
@@ -420,6 +476,8 @@ class GraphQLRequest {
                 $build = $data->getEnvironment()->getBuild();
                 $root = $this->getRootType($type, $data);
                 $result = array();
+                $baseTypes = $this->getBaseTypes($type, $data);
+                $higherTypes = $this->getHigherTypes($type, $data, true);
                 //type* : SelectionSet (List Response) Api.Interface.*
                 $result []= Token::multi(
                     Token::nl(),
@@ -439,6 +497,84 @@ class GraphQLRequest {
                     Token::textnlpop('Decoder'),
                     Token::pop(),
                 );
+                //joint*<n> : List (SelectionSet (List Response) Api.Interface.<t>)
+                //      -> SelectionSet (List Response) Api.Interface.*
+                foreach ($baseTypes as $t)
+                    foreach ($data->getType($t)->getJoints() as $joint) {
+                        if ($joint->getSecurity()->isExclude($build, 'elm'))
+                            continue;
+                        $result []= Token::multi(
+                            Token::nl(),
+                            Token::text('joint'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text(\ucfirst($joint->getName())),
+                            Token::text(' : List (SelectionSet (List Response) Api.Interface.'),
+                            Token::text(\ucfirst($joint->getTarget())),
+                            Token::text(') -> SelectionSet (List Response) Api.Interface.'),
+                            Token::textnl(\ucfirst($type->getName())),
+                            Token::text('joint'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text(\ucfirst($joint->getName())),
+                            Token::textnlpush(' ='),
+                            $joint->getRequired()
+                                ? Token::text('')
+                                : Token::multi(
+                                    Token::textnlpush('SelectionSet.map (Maybe.withDefault [])'),
+                                    Token::text('<< '),
+                                ),
+                            $t == $type->getName()
+                                ? Token::multi(
+                                    Token::text('Api'),
+                                    Token::text(\ucfirst($type->getName())),
+                                    Token::text('.'),
+                                    Token::textnl(\lcfirst($joint->getName())),
+                                )
+                                : Token::multi(
+                                    Token::textnlpush('(\\obj ->'),
+                                    Token::text('Api'),
+                                    Token::text(\ucfirst($type->getName())),
+                                    Token::textnlpush('.fragments'),
+                                    Token::text('{ '),
+                                    Token::array($this->intersperce(
+                                        array_map(function ($t) use ($joint) {
+                                            return Token::multi(
+                                                Token::text('on'),
+                                                Token::text(\ucfirst($t)),
+                                                Token::textnlpush('_Mutator ='),
+                                                Token::text('Api'),
+                                                Token::text(\ucfirst($t)),
+                                                Token::text('_Mutator.'),
+                                                Token::text(\lcfirst($joint->getName())),
+                                                Token::textnlpop(' obj'),
+                                                Token::text(', on'),
+                                                Token::text(\ucfirst($t)),
+                                                Token::textnlpush('_Type ='),
+                                                Token::text('Api'),
+                                                Token::text(\ucfirst($t)),
+                                                Token::text('_Type.'),
+                                                Token::text(\lcfirst($joint->getName())),
+                                                Token::text(' obj'),
+                                                Token::pop(),
+                                            );
+                                        }, $higherTypes),
+                                        Token::multi(
+                                            Token::nl(),
+                                            Token::text(', '),
+                                        ),
+                                    )),
+                                    Token::nl(),
+                                    Token::textnlpop('}'),
+                                    Token::pop(),
+                                    Token::textnl(')'),
+                                ),
+                            $joint->getRequired()
+                                ? Token::push()
+                                : Token::text(''),
+                            Token::textnl('<< SelectionSet.map List.concat'),
+                            Token::textnlpop('<< SelectionSet.list'),
+                            Token::pop(),
+                        );
+                    }
                 // apiIterate* : SelectionSet (Types.ApiIterator *Id) Api.Object.*_Pagination 
                 $result []= Token::multi(
                     Token::nl(),
@@ -476,12 +612,12 @@ class GraphQLRequest {
                     Token::textnlpop(')'),
                     Token::pop(),
                 );
-                //(from|list)<o><j> : Maybe String -> Maybe Int
+                //from<o><j> : Maybe String -> Maybe Int
                 //      -> List (SelectionSet (List Response) Api.Object.<o>_Pagination)
                 //      -> SelectionSet (List Response) Api.Interface.*
                 foreach ($data->getTypes() as $other) 
                     foreach ($other->getJoints() as $joint) 
-                        if ($joint->getTarget() == $type->getName()) {
+                        if (\in_array($joint->getTarget(), $baseTypes)) {
                             if ($joint->getSecurity()->isExclude($build, 'elm'))
                                 continue;
                             $result []= Token::multi(
@@ -489,6 +625,12 @@ class GraphQLRequest {
                                 Token::text('from'),
                                 Token::text(\ucfirst($other->getName())),
                                 Token::text(\ucfirst($joint->getName())),
+                                $joint->getTarget() == $type->getName()
+                                    ? Token::text('')
+                                    : Token::multi(
+                                        Token::text('At'),
+                                        Token::text(\ucfirst($type->getName())),
+                                    ),
                                 Token::text(' : Maybe String -> Maybe Int -> List (SelectionSet (List Response) Api.Object.'),
                                 Token::text(\ucfirst($other->getName())),
                                 Token::text('_Pagination) -> SelectionSet (List Response) Api.Interface.'),
@@ -496,12 +638,77 @@ class GraphQLRequest {
                                 Token::text('from'),
                                 Token::text(\ucfirst($other->getName())),
                                 Token::text(\ucfirst($joint->getName())),
+                                $joint->getTarget() == $type->getName()
+                                    ? Token::text('')
+                                    : Token::multi(
+                                        Token::text('At'),
+                                        Token::text(\ucfirst($type->getName())),
+                                    ),
                                 Token::textnlpush(' paginationStart paginationCount ='),
-                                Token::text('Api'),
-                                Token::text(\ucfirst($type->getName())),
-                                Token::text('.from'),
+                                Token::textnlpush('SelectionSet.map'),
+                                Token::textnlpush('(\\(a, (b, c)) ->'),
+                                Token::text('From'),
                                 Token::text(\ucfirst($other->getName())),
-                                Token::textnlpush(\ucfirst($joint->getName())),
+                                Token::text(\ucfirst($joint->getName())),
+                                Token::textnlpop(' a b :: c'),
+                                Token::textnl(')'),
+                                Token::textnlpush('<< SelectionSet.map2 Tuple.pair'),
+                                Token::text('Decoder.'),
+                                Token::text(\lcfirst($type->getName())),
+                                Token::textnlpop('IdDecoder'),
+                                $joint->getTarget() == $type->getName()
+                                    ? Token::multi(
+                                        Token::text('<< Api'),
+                                        Token::text(\ucfirst($type->getName())),
+                                        Token::text('.from'),
+                                        Token::text(\ucfirst($other->getName())),
+                                        Token::textnlpush(\ucfirst($joint->getName())),
+                                    )
+                                    : Token::multi(
+                                        Token::textnlpush('<< (\\opts obj ->'),
+                                        Token::text('Api'),
+                                        Token::text(\ucfirst($type->getName())),
+                                        Token::textnlpush('.fragments'),
+                                        Token::push(),
+                                        Token::text('{ '),
+                                        Token::array($this->intersperce(
+                                            array_map(function($t) use ($other, $joint) {
+                                                return Token::multi(
+                                                    Token::text('on'),
+                                                    Token::text(\ucfirst($t)),
+                                                    Token::textnlpush('_Mutator ='),
+                                                    Token::text('Api'),
+                                                    Token::text(\ucfirst($t)),
+                                                    Token::text('_Mutator.from'),
+                                                    Token::text(\ucfirst($other->getName())),
+                                                    Token::textnlpush(\ucfirst($joint->getName())),
+                                                    Token::textnl('opts'),
+                                                    Token::textnlpop('obj'),
+                                                    Token::pop(),
+                                                    Token::text(', on'),
+                                                    Token::text(\ucfirst($t)),
+                                                    Token::textnlpush('_Type ='),
+                                                    Token::text('Api'),
+                                                    Token::text(\ucfirst($t)),
+                                                    Token::text('_Type.from'),
+                                                    Token::text(\ucfirst($other->getName())),
+                                                    Token::textnlpush(\ucfirst($joint->getName())),
+                                                    Token::textnl('opts'),
+                                                    Token::text('obj'),
+                                                    Token::pop(),
+                                                    Token::pop(),
+                                                );
+                                            }, $higherTypes),
+                                            Token::multi(
+                                                Token::nl(),
+                                                Token::text(', '),
+                                            ),
+                                        )),
+                                        Token::nl(),
+                                        Token::textnlpop('}'),
+                                        Token::pop(),
+                                        Token::textnl(')'),
+                                    ),
                                 Token::textnlpush('(\optional ->'),
                                 Token::textnl('{ optional'),
                                 Token::textnlpush('| after = case paginationStart of'),
@@ -511,56 +718,148 @@ class GraphQLRequest {
                                 Token::textnl('Just value -> Present value'),
                                 Token::textnlpop('Nothing -> Absent'),
                                 Token::textnlpop('}'),
-                                Token::textnl(')'),
+                                Token::textnlpop(')'),
+                                Token::textnlpush('<< SelectionSet.map2 Tuple.pair'),
+                                Token::text('apiIterate'),
+                                Token::textnlpop(\ucfirst($other->getName())),
                                 Token::textnl('<< SelectionSet.map List.concat'),
                                 Token::textnlpop('<< SelectionSet.list'),
                                 Token::pop(),
                             );
-                            $result []= Token::multi(
-                                Token::nl(),
-                                Token::text('list'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::text(\ucfirst($joint->getName())),
-                                Token::text(' : Types.'),
-                                Token::text(\ucfirst($type->getName())),
-                                Token::text('Id -> Maybe String -> Maybe Int -> List (SelectionSet (List Response) Api.Object.'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::text('_Pagination) -> SelectionSet (List Response) Api.Interface.'),
-                                Token::textnl(\ucfirst($type->getName())),
-                                Token::text('list'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::text(\ucfirst($joint->getName())),
-                                Token::textnlpush(' id paginationStart paginationCount ='),
-                                Token::text('Api'),
-                                Token::text(\ucfirst($type->getName())),
-                                Token::text('.from'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::textnlpush(\ucfirst($joint->getName())),
-                                Token::textnlpush('(\optional ->'),
-                                Token::textnl('{ optional'),
-                                Token::textnlpush('| after = case paginationStart of'),
-                                Token::textnl('Just value -> Present value'),
-                                Token::textnlpop('Nothing -> Absent'),
-                                Token::textnlpush(', first = case paginationCount of'),
-                                Token::textnl('Just value -> Present value'),
-                                Token::textnlpop('Nothing -> Absent'),
-                                Token::textnlpop('}'),
-                                Token::textnl(')'),
-                                Token::textnl('<< SelectionSet.map List.concat'),
-                                Token::textnl('<< SelectionSet.list'),
-                                Token::textnlpush('<< (::)'),
-                                Token::textnlpush('( SelectionSet.map'),
-                                Token::text('(List.singleton << From'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::text(\ucfirst($joint->getName())),
-                                Token::textnl(' id)'),
-                                Token::text('apiIterate'),
-                                Token::text(\ucfirst($other->getName())),
-                                Token::textnlpop(''),
-                                Token::textnlpop(')'),
-                                Token::pop(),
-                                Token::pop(),
-                            );
+                            if ($build->getGraphQLNode() !== null)
+                                $result []= TOken::multi(
+                                    Token::nl(),
+                                    Token::text('continueFrom'),
+                                    Token::text(\ucfirst($other->getName())),
+                                    Token::text(\ucfirst($joint->getName())),
+                                    $joint->getTarget() == $type->getName()
+                                        ? Token::text('')
+                                        : Token::multi(
+                                            Token::text('At'),
+                                            Token::text(\ucfirst($type->getName())),
+                                        ),
+                                    Token::textnl(' : Int -> Types.DataBase -> Maybe (SelectionSet (List Response) RootQuery)'),
+                                    Token::text('continueFrom'),
+                                    Token::text(\ucfirst($other->getName())),
+                                    Token::text(\ucfirst($joint->getName())),
+                                    $joint->getTarget() == $type->getName()
+                                        ? Token::text('')
+                                        : Token::multi(
+                                            Token::text('At'),
+                                            Token::text(\ucfirst($type->getName())),
+                                        ),
+                                    Token::textnlpush(' limit data ='),
+                                    Token::text('let queryList : List (Types.'),
+                                    Token::text(\ucfirst($root->getName())),
+                                    Token::textnlpush('Id, Maybe String)'),
+                                    Token::text('queryList = data.data.'),
+                                    Token::textnlpush(\lcfirst($root->getName())),
+                                    Token::textnl('|> AssocList.toList'),
+                                    $root->getName() == $type->getName()
+                                        ? Token::text('')
+                                        : Token::multi(
+                                            Token::textnlpush('|> List.filter'),
+                                            Token::text('(\\(_, entry) -> '),
+                                            Token::array(
+                                                (function () use ($type, $baseTypes, $data) {
+                                                    $result = array();
+                                                    $var = 'entry';
+                                                    for ($i = count($baseTypes) - 2; $i >= 0; $i--) {
+                                                        $result []= Token::multi(
+                                                            Token::text('case '),
+                                                            Token::text($var),
+                                                            Token::textnlpush('.subType of'),
+                                                            Token::text('Types.'),
+                                                            Token::text(\ucfirst($baseTypes[$i])),
+                                                            Token::text('Dep '),
+                                                            Token::text($i == 0 ? '_' : 'e' . $i),
+                                                            Token::text(' -> '),
+                                                        );
+                                                        $var = 'e' . $i;
+                                                    }
+                                                    $result []= Token::textnl('True');
+                                                    for ($i = count($baseTypes) - 2; $i >= 0; $i--) {
+                                                        $result []= Token::textnlpop('_ -> False');
+                                                    }
+                                                    return $result;
+                                                })(),
+                                            ),
+                                            Token::textnlpop(')'),
+                                        ),
+                                    Token::textnlpush('|> List.filterMap'),
+                                    Token::textnlpush('(\\(id, entry) -> Maybe.andThen'),
+                                    Token::textnlpush('(\\page ->'),
+                                    Token::textnl('if page.more'),
+                                    Token::textnl('then Just (id, page.last)'),
+                                    Token::textnlpop('else Nothing'),
+                                    Token::textnl(')'),
+                                    Token::text('entry.from'),
+                                    Token::text(\ucfirst($other->getName())),
+                                    Token::textnlpop(\ucfirst($joint->getName())),
+                                    Token::textnlpop(')'),
+                                    Token::pop(),
+                                    Token::text('query : List (Types.'),
+                                    Token::text(\ucfirst($root->getName())),
+                                    Token::textnl('Id, Maybe String) -> SelectionSet (List Response) RootQuery'),
+                                    Token::textnlpush('query = SelectionSet.nonNullOrFail'),
+                                    Token::text('<< Api.Query.'),
+                                    Token::array(array_map(function ($entry) {
+                                        if ($entry['root'])
+                                            return Token::multi(
+                                                isset($entry['member'])
+                                                    ? Token::multi(
+                                                        Token::textnl(\lcfirst($entry['member'])),
+                                                        Token::text('<< '),
+                                                    )
+                                                    : Token::text(''),
+                                            );
+                                        return Token::multi(
+                                            $entry['maybe']
+                                                ? Token::multi(
+                                                    Token::textnl('SelectionSet.map (Maybe.withDefault [])'),
+                                                    Token::text('<< '),
+                                                )
+                                                : Token::text(''),
+                                            Token::text('Api.Object.'),
+                                            Token::text(\ucfirst($entry['type'])),
+                                            Token::text('.'),
+                                            isset($entry['member'])
+                                                ? Token::multi(
+                                                    Token::textnl(\lcfirst($entry['member'])),
+                                                    Token::text('<< '),
+                                                )
+                                                : Token::text(''),
+                                        );
+                                    }, $build->getGraphQLNode())),
+                                    Token::textnl(\lcfirst($root->getName())),
+                                    Token::textnl('<< SelectionSet.map List.concat'),
+                                    Token::textnl('<< SelectionSet.list'),
+                                    Token::textnlpush('<< List.map'),
+                                    Token::textnlpush('(\\(id, last) ->'),
+                                    Token::text('load'),
+                                    Token::text(\ucfirst($root->getName())),
+                                    Token::textnlpush(' id'),
+                                    Token::text('[ from'),
+                                    Token::text(\ucfirst($other->getName())),
+                                    Token::textnlpush(\ucfirst($joint->getName())),
+                                    Token::textnl('last'),
+                                    Token::textnl('(Just limit)'),
+                                    Token::text('[ node'),
+                                    Token::textnlpush(\ucfirst($other->getName())),
+                                    Token::text('[ type'),
+                                    Token::text(\ucfirst($other->getName())),
+                                    Token::textnlpop(' ]'),
+                                    Token::textnlpop(']'),
+                                    Token::textnlpop(']'),
+                                    Token::pop(),
+                                    Token::textnlpop(')'),
+                                    Token::pop(),
+                                    Token::pop(),
+                                    Token::textnlpush('in  if List.isEmpty queryList'),
+                                    Token::textnl('then Nothing'),
+                                    Token::textnlpop('else Just <| query queryList'),
+                                    Token::pop(),
+                                );
                         }
                 //node* : List (SelectionSet (List Response) Api.Interface.*)
                 //      -> SelectionSet (List Response) Api.Object.*_Pagination
@@ -798,6 +1097,185 @@ class GraphQLRequest {
                             ),
                         Token::pop(),
                     );
+                    if (!$query->isLimitFirst() && $build->getGraphQLNode() !== null)
+                        $result []= Token::multi(
+                            Token::nl(),
+                            Token::text('continueQuery'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text(\ucfirst($query->getName())),
+                            Token::textnl(' : Int -> Types.DataBase -> Maybe (SelectionSet (List Response) RootQuery)'),
+                            Token::text('continueQuery'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::text(\ucfirst($query->getName())),
+                            Token::textnlpush(' limit data ='),
+                            count($query->getInputVarNames()) + count($query->getInputObjNames()) == 0
+                                ? Token::multi(
+                                    Token::text('let queryList = case data.static.'),
+                                    Token::text(\lcfirst($type->getName())),
+                                    Token::text('.'),
+                                    Token::text(\lcfirst($query->getName())),
+                                    Token::textnlpush(' of'),
+                                    Token::push(),
+                                    Token::textnlpush('Just v ->'),
+                                    Token::textnl('if v.more'),
+                                    Token::textnlpush('then case v.last of'),
+                                    Token::textnl('Just e -> [ ((), e) ]'),
+                                    Token::textnlpop('Nothing -> []'),
+                                    Token::textnlpop('else []'),
+                                    Token::textnlpop('Nothing -> []'),
+                                )
+                                : Token::multi(
+                                    Token::text('let queryList = data.static.'),
+                                    Token::text(\lcfirst($type->getName())),
+                                    Token::text('.'),
+                                    Token::textnlpush(\lcfirst($query->getName())),
+                                    Token::push(),
+                                    Token::text('|> '),
+                                    Token::array(array_map(function ($name) use ($query) {
+                                        return Token::multi(
+                                            Token::text($this->getDict(
+                                                $query->getInputVarType($name)
+                                            )),
+                                            Token::textnl('.toList'),
+                                            Token::textnlpush('|> List.concatMap'),
+                                            Token::text('(\\(arg'),
+                                            Token::text(\ucfirst($name)),
+                                            Token::text(', v'),
+                                            Token::text(\ucfirst($name)),
+                                            Token::text(') -> v'),
+                                            Token::textnlpush(\ucfirst($name)),
+                                            Token::text('|> '),
+                                        );
+                                    }, $query->getInputVarNames())),
+                                    Token::array(array_map(function ($name) use ($query) {
+                                        return Token::multi(
+                                            Token::textnl('AssocList.toList'),
+                                            Token::textnlpush('|> List.concatMap'),
+                                            Token::text('(\\(arg'),
+                                            Token::text(\ucfirst($name)),
+                                            Token::text(', v'),
+                                            Token::text(\ucfirst($name)),
+                                            Token::text(') -> v'),
+                                            Token::textnlpush(\ucfirst($name)),
+                                            Token::text('|> '),
+                                        );
+                                    }, $query->getInputObjNames())),
+                                    Token::textnlpush('\\v ->'),
+                                    Token::textnl('if v.more'),
+                                    Token::textnlpush('then List.singleton <| Tuple.pair'),
+                                    Token::text('{ '),
+                                    Token::array($this->intersperce(
+                                        array_merge(
+                                            array_map(function ($name) {
+                                                return Token::multi(
+                                                    Token::text(\lcfirst($name)),
+                                                    Token::text(' = arg'),
+                                                    Token::text(\ucfirst($name)),
+                                                );
+                                            }, $query->getInputVarNames()),
+                                            array_map(function ($name) {
+                                                return Token::multi(
+                                                    Token::text(\lcfirst($name)),
+                                                    Token::text(' = arg'),
+                                                    Token::text(\ucfirst($name)),
+                                                );
+                                            }, $query->getInputObjNames()),
+                                        ),
+                                        Token::multi(
+                                            Token::nl(),
+                                            Token::text(', '),
+                                        )
+                                    )),
+                                    Token::nl(),
+                                    Token::textnl('}'),
+                                    Token::textnlpop('v.last'),
+                                    Token::textnlpop('else []'),
+                                    Token::array(array_map(function ($name) {
+                                        return Token::multi(
+                                            Token::pop(),
+                                            Token::textnlpop(')'),
+                                        );
+                                    }, $query->getInputVarNames())),
+                                    Token::array(array_map(function ($name) {
+                                        return Token::multi(
+                                            Token::pop(),
+                                            Token::textnlpop(')'),
+                                        );
+                                    }, $query->getInputObjNames())),
+                                    Token::textnlpush('|> List.filterMap'),
+                                    Token::textnlpush('(\\(k, v) -> Maybe.map'),
+                                    Token::textnl('(Tuple.pair k)'),
+                                    Token::textnlpop('v'),
+                                    Token::textnlpop(')'),
+                                    Token::pop(),
+                                ),
+                            Token::textnlpush('query = SelectionSet.nonNullOrFail'),
+                            Token::text('<< Api.Query.'),
+                            Token::array(array_map(function ($entry) {
+                                if ($entry['root'])
+                                    return Token::multi(
+                                        isset($entry['member'])
+                                            ? Token::multi(
+                                                Token::textnl(\lcfirst($entry['member'])),
+                                                Token::text('<< '),
+                                            )
+                                            : Token::text(''),
+                                    );
+                                return Token::multi(
+                                    $entry['maybe']
+                                        ? Token::multi(
+                                            Token::textnl('SelectionSet.map (Maybe.withDefault [])'),
+                                            Token::text('<< '),
+                                        )
+                                        : Token::text(''),
+                                    Token::text('Api.Object.'),
+                                    Token::text(\ucfirst($entry['type'])),
+                                    Token::text('.'),
+                                    isset($entry['member'])
+                                        ? Token::multi(
+                                            Token::textnl(\lcfirst($entry['member'])),
+                                            Token::text('<< '),
+                                        )
+                                        : Token::text(''),
+                                );
+                            }, $build->getGraphQLNode())),
+                            Token::textnl(\lcfirst($type->getName())),
+                            Token::textnl('<< SelectionSet.map List.concat'),
+                            Token::textnl('<< SelectionSet.list'),
+                            Token::textnlpush('<< List.map'),
+                            Token::textnlpush('(\\(arg, key) ->'),
+                            Token::text('query'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::textnlpush(\ucfirst($query->getName())),
+                            Token::array(array_map(function ($name) {
+                                return Token::multi(
+                                    Token::text('arg.'),
+                                    Token::textnl(\lcfirst($name)),
+                                );
+                            }, $query->getInputVarNames())),
+                            Token::array(array_map(function ($name) {
+                                return Token::multi(
+                                    Token::text('arg.'),
+                                    Token::textnl(\lcfirst($name)),
+                                );
+                            }, $query->getInputObjNames())),
+                            Token::textnl('(Just key)'),
+                            Token::textnl('(Just limit)'),
+                            Token::text('[ node'),
+                            Token::textnlpush(\ucfirst($type->getName())),
+                            Token::text('[ type'),
+                            Token::text(\ucfirst($type->getName())),
+                            Token::textnlpop(' ]'),
+                            Token::textnlpop(']'),
+                            Token::pop(),
+                            Token::textnlpop(')'),
+                            Token::pop(),
+                            Token::pop(),
+                            Token::textnlpush('in  if List.isEmpty queryList'),
+                            Token::textnl('then Nothing'),
+                            Token::textnlpop('else Just <| query queryList'),
+                            Token::pop(),
+                        );
                 }
                 //load* : Types.*Id 
                 //      -> List (SelectionSet (List Response) Api.Interface.*)
@@ -837,6 +1315,31 @@ class GraphQLRequest {
         while ($type->getBase() !== null)
             $type = $data->getType($type->getBase());
         return $type;
+    }
+
+    private function getBaseTypes(Type $type, DataDef $data): array {
+        $result = array();
+        while ($type !== null) {
+            $result []= $type->getName();
+            if ($type->getBase() !== null)
+                $type = $data->getType($type->getBase());
+            else $type = null;
+        }
+        return $result;
+    }
+
+    private function getHigherTypes(Type $type, DataDef $data, bool $includeCurrent = true): array {
+        $result = array();
+        if ($includeCurrent)
+            $result []= $type->getName();
+        foreach ($data->getTypes() as $other) 
+            if ($other->getBase() == $type->getName()) {
+                $result = array_merge(
+                    $result,
+                    $this->getHigherTypes($other, $data, true),
+                );
+            }
+        return $result;
     }
     
     private function getElmValueType(string $type, bool $list, $brackets = true): Token { 

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
-    xmlns="http://doc.mabron.de/xsd/data-layout/2020-08/data-layout.xsd"
+    xmlns="http://doc.mabron.de/xsd/data-layout/2020-09/data-layout.xsd"
     elementFormDefault="qualified"
-    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-08/data-layout.xsd"
+    targetNamespace="http://doc.mabron.de/xsd/data-layout/2020-09/data-layout.xsd"
    >
     <xs:element name="DataDefinition">
         <xs:complexType>
@@ -265,6 +265,46 @@
                                     <xs:simpleType>
                                         <xs:restriction base="xs:string">
                                             <xs:pattern value="([A-Z][a-zA-Z0-9_]*(\.[A-Z][a-zA-Z0-9_]*)*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="graphql-node" default="">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            This tells the builder where the GraphQL Type with the static 
+                                            access of the types is located. The path is separated with a 
+                                            single |. Each sub path contains a type name, a dot and the 
+                                            member name. If the result of this sub sub path could be null,
+                                            then a single question mark ? is added. The last sub path only 
+                                            consists of the type name.
+                                            If this value is empty some util members would not be created.
+                                            This attribute will be ignored if the attribute graphql is not 
+                                            set.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="(([A-Z][a-zA-Z_]*\.[a-z][a-zA-Z_]*\??\|)*[A-Z][a-zA-Z_]*)?" />
+                                        </xs:restriction>
+                                    </xs:simpleType>
+                                </xs:attribute>
+                                <xs:attribute name="graphql-mutate" default="">
+                                    <xs:annotation>
+                                        <xs:documentation>
+                                            This tells the builder where the GraphQL Type with mutation
+                                            access to the types is located. The path is separated with a 
+                                            single |. Each sub path contains a type name, a dot and the 
+                                            member name. If the result of this sub sub path could be null,
+                                            then a single question mark ? is added. The last sub path only 
+                                            consists of the type name.
+                                            If this value is empty some util members would not be created.
+                                            This attribute will be ignored if the attribute graphql is not 
+                                            set.
+                                        </xs:documentation>
+                                    </xs:annotation>
+                                    <xs:simpleType>
+                                        <xs:restriction base="xs:string">
+                                            <xs:pattern value="(([A-Z][a-zA-Z_]*\.[a-z][a-zA-Z_]*\??\|)*[A-Z][a-zA-Z_]*)?" />
                                         </xs:restriction>
                                     </xs:simpleType>
                                 </xs:attribute>

@@ -276,6 +276,8 @@ class ElmBuild extends Build {
     private $container;
     private $graphlql;
     private $graphlqlRequest;
+    private $graphqlNode;
+    private $graphqlMutate;
 
     public function getNamespace(): string {
         return $this->namespace;
@@ -299,6 +301,18 @@ class ElmBuild extends Build {
         return $this->graphqlRequest == ''
             ? null 
             : $this->graphqlRequest;
+    }
+
+    public function getGraphQLNode(): ?array {
+        if ($this->getGraphQL() === null)
+            return null;
+        return $this->graphqlNode;
+    }
+
+    public function getGraphQLMutate(): ?array {
+        if ($this->getGraphQL() === null)
+            return null;
+        return $this->graphqlMutate;
     }
 
     public static function empty(): Build {
@@ -330,7 +344,45 @@ class ElmBuild extends Build {
             $build->graphql = (string)$element->Elm->attributes()->graphql;
         if (isset($element->Elm->attributes()->{'graphql-request'}))
             $build->graphqlRequest = (string)$element->Elm->attributes()->{'graphql-request'};
+        if (isset($element->Elm->attributes()->{'graphql-node'}))
+            $build->graphqlNode = self::buildGraphQlNode(
+                (string)$element->Elm->attributes()->{'graphql-node'}
+            );
+        if (isset($element->Elm->attributes()->{'graphql-mutate'}))
+            $build->graphqlMutate = self::buildGraphQlNode(
+                (string)$element->Elm->attributes()->{'graphql-mutate'}
+            );
 
         return $build;
+    }
+
+    private static function buildGraphQlNode(string $code): ?array {
+        if ($code == '')
+            return null;
+        $parts = explode('|', $code);
+        $result = array();
+        for ($i = 0; $i < count($parts); ++$i) {
+            if ($i == count($parts) - 1)
+                $result []= array(
+                    'type' => $parts[$i],
+                    'maybe' => true,
+                    'root' => $i == 0,
+                );
+            else {
+                $p = explode('.', $parts[$i]);
+                $m = false;
+                if (substr($p[1], -1) == '?') {
+                    $m = true;
+                    $p[1] = substr($p[1], 0, -1);
+                }
+                $result []= array(
+                    'type' => $p[0],
+                    'member' => $p[1],
+                    'maybe' => $m,
+                    'root' => $i == 0,
+                );
+            }
+        }
+        return $result;
     }
 }

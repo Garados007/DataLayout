@@ -673,7 +673,7 @@ class GraphSchemeBuilder {
             $args = $this->intersperce(array_merge(
                 array_map(function ($attr) use ($query, $namefy) {
                     return Token::multi(
-                        Token::text($attr),
+                        Token::text(\lcfirst($attr)),
                         Token::text(': '),
                         $namefy(
                             $this->getGraphqlType(
@@ -685,7 +685,7 @@ class GraphSchemeBuilder {
                 }, $query->getInputVarNames()),
                 array_map(function ($joint) use ($query, $namefy, $data) {
                     return Token::multi(
-                        Token::text($joint),
+                        Token::text(\lcfirst($joint)),
                         Token::text(': '),
                         $namefy(
                             'ID',
