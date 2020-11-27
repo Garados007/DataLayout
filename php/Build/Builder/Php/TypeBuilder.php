@@ -65,7 +65,7 @@ class TypeBuilder {
                     Token::textnlpop('return $this->id;'),
                     Token::textnl('}'),
                     Token::nl(),
-                    Token::textnlpush('public function get_Type(): string {'),
+                    Token::textnlpush('public function getType(): string {'),
                     Token::textnlpop('return $this->_type;'),
                     Token::textnl('}'),
                     Token::nl(),
@@ -1081,7 +1081,11 @@ class TypeBuilder {
                                             Token::text(ucfirst($query->getLimitVar())),
                                             Token::text('() . ", " . ($_first ?: PHP_INT_MAX) . ")"')
                                         );
-                                    default: return Token::text('');
+                                    default:
+                                        return Token::multi(
+                                            Token::textnl(' . PHP_EOL'),
+                                            Token::text('. "LIMIT " . ($_first ?: PHP_INT_MAX)')
+                                        );
                                 }
                             })(),
                             Token::textnlpop(' . ";"'),
