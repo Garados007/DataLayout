@@ -229,7 +229,8 @@ class Type {
                 $res []= Token::text($type);
                 if (!$attr->getOptional())
                     $res [] = Token::text(' NOT NULL');
-                if ($attr->getDefault() !== null) {
+                // if ($attr->getDefault() !== null) {
+                if ($attr->hasDefault()) {
                     $res []= Token::text(' DEFAULT ');
                     $enableOutput = true;
                     switch (true) {
