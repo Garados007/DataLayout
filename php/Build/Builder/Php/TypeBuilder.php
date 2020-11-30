@@ -132,6 +132,23 @@ class TypeBuilder {
                     Token::textnlpop(', $loadCached);'),
                     Token::textnl('}'),
                     Token::nl(),
+                    Token::text('public function get'),
+                    Token::text(ucfirst($joint->getName())),
+                    Token::text('Id(): '),
+                    Token::text($joint->getRequired() ? '' : '?'),
+                    Token::textnlpush('int {'),
+                    $joint->getRequired()
+                        ? Token::text('return ')
+                        : Token::multi(
+                            Token::text('return $this->'),
+                            Token::text($joint->getName()),
+                            Token::text(' === null ? null : ')
+                        ),
+                    Token::text('$this->'),
+                    Token::text($joint->getName()),
+                    Token::textnlpop(';'),
+                    Token::textnl('}'),
+                    Token::nl(),
                     Token::text('public function set'),
                     Token::text(ucfirst($joint->getName())),
                     Token::text('('),
