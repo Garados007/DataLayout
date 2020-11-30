@@ -103,9 +103,9 @@ class Attribute {
             case 'date':
                 $attr->default = $attr->default == null 
                     ? null //now
-                    : $attr->default == 'now'
+                    : ($attr->default == 'now'
                     ? null //now
-                    : \strtotime($attr->default, 0);
+                    : \strtotime($attr->default, 0));
                 break;
             case 'json':
                 $attr->default = $attr->default == null 

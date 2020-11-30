@@ -581,8 +581,9 @@ class TypeBuilder {
                         switch ($attr->getType()) {
                             case 'bool':
                                 $entry = Token::multi(
+                                    Token::text('('),
                                     $entry, 
-                                    Token::text(' ? \'TRUE\' : \'FALSE\'')
+                                    Token::text(' ? \'TRUE\' : \'FALSE\')')
                                 );
                                 break;
                             case 'byte':
