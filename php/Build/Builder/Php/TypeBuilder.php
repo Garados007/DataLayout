@@ -187,6 +187,8 @@ class TypeBuilder {
                 Token::array(array_map(function ($attr) use ($config, $data, $type, $build) {
                     if ($attr->getSecurity()->isExclude($build, 'php'))
                         return null;
+                    if (!$attr->hasDefault())
+                        return null;
                     $default = $attr->getDefault();
                     $res = array();
                     $res []= Token::text('$this->');
