@@ -759,7 +759,7 @@ class ResolveAttacher {
                         Token::text('::'),
                         Token::text($query->getName()),
                         Token::text('('),
-                        $this->buildQueryArgs($type, $query, false, false),
+                        $this->buildQueryArgs($type, $query, false, false, true),
                         Token::textnlpop('));'),
                         Token::textnl('}'),
                     );
@@ -776,7 +776,7 @@ class ResolveAttacher {
                             Token::text('::'),
                             Token::text($query->getName()),
                             Token::text('('),
-                            $this->buildQueryArgs($type, $query, true, true),
+                            $this->buildQueryArgs($type, $query, true, true, true),
                             Token::textnl(');'),
                             Token::textnlpush('$result = array_reduce($result, function ($carry, $item) {'),
                             Token::textnlpush('if (self::verify($item, false) !== null)'),
@@ -797,7 +797,7 @@ class ResolveAttacher {
                             Token::text('::'),
                             Token::text($query->getName()),
                             Token::text('('),
-                            $this->buildQueryArgs($type, $query, false, false),
+                            $this->buildQueryArgs($type, $query, false, false, true),
                             Token::textnl('),'),
                             Token::textnlpush('function ($carry, $item) {'),
                             Token::textnlpush('if (self::verify($item, false) !== null)'),
@@ -994,7 +994,7 @@ class ResolveAttacher {
             );
     }
 
-    private function buildQueryArgs(\Data\Type $type, \Data\Query $query, bool $more, bool $paginate): Token {
+    private function buildQueryArgs(\Data\Type $type, \Data\Query $query, bool $more, bool $paginate, bool $before = false): Token {
         if (count($query->getInputVarNames()) + count($query->getInputObjNames()) == 0)
             return Token::text('');
         return Token::multi(
@@ -1056,7 +1056,14 @@ class ResolveAttacher {
                                 Token::text('isset($args[\'after\']) ? self::idResolve'),
                                 Token::text(\ucfirst($type->getName())),
                                 Token::text('($args[\'after\'])->getId() : null')
-                            )
+                            ),
+                            $before
+                                ? Token::multi(
+                                    Token::text('isset($args[\'before\']) ? self::idResolve'),
+                                    Token::text(\ucfirst($type->getName())),
+                                    Token::text('($args[\'before\'])->getId() : null')
+                                )
+                                : Token::text('')
                         )
                         : array(),
                 ),

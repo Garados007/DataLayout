@@ -1059,7 +1059,8 @@ class TypeBuilder {
                                 ? Token::text('')
                                 : Token::multi(
                                     Token::nl(),
-                                    Token::text('. ($_after === null ? \'\' : " AND id >= $_after")'),
+                                    Token::textnl('. ($_after === null ? \'\' : " AND id >= $_after")'),
+                                    Token::text('. ($_before === null ? \'\' : " AND id <= $_before")')
                                 ),
                             count($query->getSortNames()) > 0 
                                 ? Token::multi(
@@ -1241,6 +1242,7 @@ class TypeBuilder {
                             ? array(
                                 Token::text('?int $_first = null'),
                                 Token::text('?int $_after = null'),
+                                Token::text('?int $_before = null')
                             )
                             : array(),
                         $query->getCache()

@@ -929,7 +929,7 @@ class GraphQLRequest {
                         }, $query->getInputObjNames())),
                         $query->isLimitFirst()
                             ? Token::text('')
-                            : Token::text('Maybe String -> Maybe Int -> '),
+                            : Token::text('Maybe String -> Maybe String -> Maybe Int -> '),
                         Token::text('List (SelectionSet (List Response) Api.'),
                         $query->isLimitFirst()
                             ? Token::multi(
@@ -961,7 +961,7 @@ class GraphQLRequest {
                         }, $query->getInputObjNames())),
                         $query->isLimitFirst()
                             ? Token::text('')
-                            : Token::text(' paginationStart paginationCount'),
+                            : Token::text(' paginationStart paginationEnd paginationCount'),
                         Token::textnlpush(' ='),
                         $query->isLimitFirst()
                             ? Token::multi(
@@ -1020,6 +1020,9 @@ class GraphQLRequest {
                                 Token::textnlpush('(\optional ->'),
                                 Token::textnl('{ optional'),
                                 Token::textnlpush('| after = case paginationStart of'),
+                                Token::textnl('Just value -> Present value'),
+                                Token::textnlpop('Nothing -> Absent'),
+                                Token::textnlpush(', before = case paginationEnd of'),
                                 Token::textnl('Just value -> Present value'),
                                 Token::textnlpop('Nothing -> Absent'),
                                 Token::textnlpush(', first = case paginationCount of'),
@@ -1110,11 +1113,11 @@ class GraphQLRequest {
                             Token::text('continueQuery'),
                             Token::text(\ucfirst($type->getName())),
                             Token::text(\ucfirst($query->getName())),
-                            Token::textnl(' : Int -> Types.DataBase -> Maybe (SelectionSet (List Response) RootQuery)'),
+                            Token::textnl(' : Bool -> Int -> Types.DataBase -> Maybe (SelectionSet (List Response) RootQuery)'),
                             Token::text('continueQuery'),
                             Token::text(\ucfirst($type->getName())),
                             Token::text(\ucfirst($query->getName())),
-                            Token::textnlpush(' limit data ='),
+                            Token::textnlpush(' loadBefore limit data ='),
                             count($query->getInputVarNames()) + count($query->getInputObjNames()) == 0
                                 ? Token::multi(
                                     Token::text('let queryList = case data.static.'),
@@ -1266,7 +1269,8 @@ class GraphQLRequest {
                                     Token::textnl(\lcfirst($name)),
                                 );
                             }, $query->getInputObjNames())),
-                            Token::textnl('(Just key)'),
+                            Token::textnl('(if loadBefore then Nothing else Just key)'),
+                            Token::textnl('(if loadBefore then Just key else Nothing)'),
                             Token::textnl('(Just limit)'),
                             Token::text('[ node'),
                             Token::textnlpush(\ucfirst($type->getName())),

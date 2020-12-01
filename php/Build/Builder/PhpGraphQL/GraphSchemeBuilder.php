@@ -696,7 +696,8 @@ class GraphSchemeBuilder {
                 $paginate == 'full' && !$query->isLimitFirst()
                     ? array(
                         Token::text('first: Int'),
-                        Token::text('after: String')
+                        Token::text('after: String'),
+                        Token::text('before: String')
                     )
                     : array(),
             ), Token::text(', '));
